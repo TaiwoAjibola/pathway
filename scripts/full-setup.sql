@@ -62,7 +62,7 @@ SELECT 'p00000000000000000000001', 'express-entry-fsw', 'Canada PR — Express E
 WHERE NOT EXISTS (SELECT 1 FROM "Pathway" WHERE code = 'express-entry-fsw');
 
 INSERT INTO "Stage" (id, "pathwayId", code, name, description, "order", "autoUnlock", "estimatedDurationDays", "createdAt", "updatedAt")
-SELECT * FROM (VALUES
+SELECT v.id, v.pathwayId, v.code, v.name, v.description, v.order, v.autoUnlock, v.estimatedDurationDays, v.createdAt, v.updatedAt FROM (VALUES
   ('s-planning','p00000000000000000000001','planning','Planning','Assess your pathway and set goals',1,true,3,NOW(),NOW()),
   ('s-eligibility','p00000000000000000000001','eligibility','Eligibility','Check FSW 67 points and CRS',2,true,7,NOW(),NOW()),
   ('s-documents','p00000000000000000000001','documents','Document Gathering','Collect all required documents',3,true,14,NOW(),NOW()),
@@ -77,7 +77,7 @@ SELECT * FROM (VALUES
   ('s-final-pr','p00000000000000000000001','final-pr','Final PR Application','Submit e-APR',12,false,14,NOW(),NOW()),
   ('s-approval','p00000000000000000000001','approval','Approval & COPR','Wait for PPR and COPR',13,false,180,NOW(),NOW()),
   ('s-landing','p00000000000000000000001','landing','Landing in Canada','Prepare for landing',14,false,90,NOW(),NOW())
-) AS v WHERE NOT EXISTS (SELECT 1 FROM "Stage" WHERE code = v.code);
+) AS v(id, "pathwayId", code, name, description, "order", "autoUnlock", "estimatedDurationDays", "createdAt", "updatedAt") WHERE NOT EXISTS (SELECT 1 FROM "Stage" WHERE code = v.code);
 
 INSERT INTO "Application" (id, "userId", "pathwayId", label, status, "currentStageId", "crsScore", "targetCrsScore", "healthScore", "readinessScore", "createdAt", "updatedAt")
 SELECT 'a000000000000000000001','u00000000000000000000001','p00000000000000000000001','Canada PR — Express Entry','IN_PROGRESS'::"ApplicationStatus",'s-credential',456,470,84,68,NOW(),NOW()
@@ -88,7 +88,7 @@ SELECT 'ap00000000000000000001','a000000000000000000001','PRIMARY'::"ApplicantTy
 WHERE NOT EXISTS (SELECT 1 FROM "Applicant" WHERE id = 'ap00000000000000000001');
 
 INSERT INTO "ApplicationStage" (id, "applicationId", "stageId", status, progress, "createdAt", "updatedAt")
-SELECT * FROM (VALUES
+SELECT v.id, v.applicationId, v.stageId, v.status, v.progress, v.createdAt, v.updatedAt FROM (VALUES
   ('as-planning','a000000000000000000001','s-planning','COMPLETED'::"StageStatus",100,NOW(),NOW()),
   ('as-elig','a000000000000000000001','s-eligibility','COMPLETED'::"StageStatus",100,NOW(),NOW()),
   ('as-docs','a000000000000000000001','s-documents','COMPLETED'::"StageStatus",100,NOW(),NOW()),
@@ -103,4 +103,4 @@ SELECT * FROM (VALUES
   ('as-final','a000000000000000000001','s-final-pr','LOCKED'::"StageStatus",0,NOW(),NOW()),
   ('as-approval','a000000000000000000001','s-approval','LOCKED'::"StageStatus",0,NOW(),NOW()),
   ('as-landing','a000000000000000000001','s-landing','LOCKED'::"StageStatus",0,NOW(),NOW())
-) AS v WHERE NOT EXISTS (SELECT 1 FROM "ApplicationStage" WHERE id = v.id);
+) AS v(id, "applicationId", "stageId", status, progress, "createdAt", "updatedAt") WHERE NOT EXISTS (SELECT 1 FROM "ApplicationStage" WHERE id = v.id);
