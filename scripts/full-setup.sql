@@ -80,27 +80,27 @@ SELECT * FROM (VALUES
 ) AS v WHERE NOT EXISTS (SELECT 1 FROM "Stage" WHERE code = v.code);
 
 INSERT INTO "Application" (id, "userId", "pathwayId", label, status, "currentStageId", "crsScore", "targetCrsScore", "healthScore", "readinessScore", "createdAt", "updatedAt")
-SELECT 'a000000000000000000001','u00000000000000000000001','p00000000000000000000001','Canada PR — Express Entry','IN_PROGRESS','s-credential',456,470,84,68,NOW(),NOW()
+SELECT 'a000000000000000000001','u00000000000000000000001','p00000000000000000000001','Canada PR — Express Entry','IN_PROGRESS'::"ApplicationStatus",'s-credential',456,470,84,68,NOW(),NOW()
 WHERE NOT EXISTS (SELECT 1 FROM "Application" WHERE id = 'a000000000000000000001');
 
 INSERT INTO "Applicant" (id, "applicationId", type, "isDependent", "firstName", "lastName", "dateOfBirth", nationality, "countryOfResidence", "maritalStatus", "medicalStatus", "createdAt", "updatedAt")
-SELECT 'ap00000000000000000001','a000000000000000000001','PRIMARY',false,'John','Doe','1997-01-15','Nigeria','Nigeria','MARRIED','NOT_STARTED',NOW(),NOW()
+SELECT 'ap00000000000000000001','a000000000000000000001','PRIMARY'::"ApplicantType",false,'John','Doe','1997-01-15','Nigeria','Nigeria','MARRIED'::"MaritalStatus",'NOT_STARTED'::"MedicalStatus",NOW(),NOW()
 WHERE NOT EXISTS (SELECT 1 FROM "Applicant" WHERE id = 'ap00000000000000000001');
 
 INSERT INTO "ApplicationStage" (id, "applicationId", "stageId", status, progress, "createdAt", "updatedAt")
 SELECT * FROM (VALUES
-  ('as-planning','a000000000000000000001','s-planning','COMPLETED',100,NOW(),NOW()),
-  ('as-elig','a000000000000000000001','s-eligibility','COMPLETED',100,NOW(),NOW()),
-  ('as-docs','a000000000000000000001','s-documents','COMPLETED',100,NOW(),NOW()),
-  ('as-cred','a000000000000000000001','s-credential','IN_PROGRESS',40,NOW(),NOW()),
-  ('as-lang','a000000000000000000001','s-language','IN_PROGRESS',25,NOW(),NOW()),
-  ('as-emp','a000000000000000000001','s-employment','UNLOCKED',10,NOW(),NOW()),
-  ('as-pof','a000000000000000000001','s-proof-of-funds','UNLOCKED',0,NOW(),NOW()),
-  ('as-ee','a000000000000000000001','s-ee-profile','LOCKED',0,NOW(),NOW()),
-  ('as-ita','a000000000000000000001','s-ita-prep','LOCKED',0,NOW(),NOW()),
-  ('as-med','a000000000000000000001','s-medical','LOCKED',0,NOW(),NOW()),
-  ('as-police','a000000000000000000001','s-police-certificates','LOCKED',0,NOW(),NOW()),
-  ('as-final','a000000000000000000001','s-final-pr','LOCKED',0,NOW(),NOW()),
-  ('as-approval','a000000000000000000001','s-approval','LOCKED',0,NOW(),NOW()),
-  ('as-landing','a000000000000000000001','s-landing','LOCKED',0,NOW(),NOW())
+  ('as-planning','a000000000000000000001','s-planning','COMPLETED'::"StageStatus",100,NOW(),NOW()),
+  ('as-elig','a000000000000000000001','s-eligibility','COMPLETED'::"StageStatus",100,NOW(),NOW()),
+  ('as-docs','a000000000000000000001','s-documents','COMPLETED'::"StageStatus",100,NOW(),NOW()),
+  ('as-cred','a000000000000000000001','s-credential','IN_PROGRESS'::"StageStatus",40,NOW(),NOW()),
+  ('as-lang','a000000000000000000001','s-language','IN_PROGRESS'::"StageStatus",25,NOW(),NOW()),
+  ('as-emp','a000000000000000000001','s-employment','UNLOCKED'::"StageStatus",10,NOW(),NOW()),
+  ('as-pof','a000000000000000000001','s-proof-of-funds','UNLOCKED'::"StageStatus",0,NOW(),NOW()),
+  ('as-ee','a000000000000000000001','s-ee-profile','LOCKED'::"StageStatus",0,NOW(),NOW()),
+  ('as-ita','a000000000000000000001','s-ita-prep','LOCKED'::"StageStatus",0,NOW(),NOW()),
+  ('as-med','a000000000000000000001','s-medical','LOCKED'::"StageStatus",0,NOW(),NOW()),
+  ('as-police','a000000000000000000001','s-police-certificates','LOCKED'::"StageStatus",0,NOW(),NOW()),
+  ('as-final','a000000000000000000001','s-final-pr','LOCKED'::"StageStatus",0,NOW(),NOW()),
+  ('as-approval','a000000000000000000001','s-approval','LOCKED'::"StageStatus",0,NOW(),NOW()),
+  ('as-landing','a000000000000000000001','s-landing','LOCKED'::"StageStatus",0,NOW(),NOW())
 ) AS v WHERE NOT EXISTS (SELECT 1 FROM "ApplicationStage" WHERE id = v.id);
