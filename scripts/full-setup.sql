@@ -62,22 +62,47 @@ SELECT 'p00000000000000000000001', 'express-entry-fsw', 'Canada PR — Express E
 WHERE NOT EXISTS (SELECT 1 FROM "Pathway" WHERE code = 'express-entry-fsw');
 
 INSERT INTO "Stage" (id, "pathwayId", code, name, description, "order", "autoUnlock", "estimatedDurationDays", "createdAt", "updatedAt")
-SELECT v.id, v.pathwayId, v.code, v.name, v.description, v.order, v.autoUnlock, v.estimatedDurationDays, v.createdAt, v.updatedAt FROM (VALUES
-  ('s-planning','p00000000000000000000001','planning','Planning','Assess your pathway and set goals',1,true,3,NOW(),NOW()),
-  ('s-eligibility','p00000000000000000000001','eligibility','Eligibility','Check FSW 67 points and CRS',2,true,7,NOW(),NOW()),
-  ('s-documents','p00000000000000000000001','documents','Document Gathering','Collect all required documents',3,true,14,NOW(),NOW()),
-  ('s-credential','p00000000000000000000001','credential-assessment','Credential Assessment','Get ECA from designated org',4,false,60,NOW(),NOW()),
-  ('s-language','p00000000000000000000001','language-tests','Language Tests','Take IELTS/CELPIP/TEF',5,true,45,NOW(),NOW()),
-  ('s-employment','p00000000000000000000001','employment','Employment Verification','Collect reference letters',6,true,30,NOW(),NOW()),
-  ('s-pof','p00000000000000000000001','proof-of-funds','Proof of Funds','Show settlement funds',7,true,14,NOW(),NOW()),
-  ('s-ee-profile','p00000000000000000000001','ee-profile','Express Entry Profile','Create and submit EE profile',8,false,3,NOW(),NOW()),
-  ('s-ita','p00000000000000000000001','ita-prep','ITA Preparation','Prepare documents for ITA',9,false,30,NOW(),NOW()),
-  ('s-medical','p00000000000000000000001','medical','Medical Exam','Complete immigration medical',10,true,30,NOW(),NOW()),
-  ('s-police','p00000000000000000000001','police-certificates','Police Certificates','Obtain PCC from all countries',11,false,60,NOW(),NOW()),
-  ('s-final-pr','p00000000000000000000001','final-pr','Final PR Application','Submit e-APR',12,false,14,NOW(),NOW()),
-  ('s-approval','p00000000000000000000001','approval','Approval & COPR','Wait for PPR and COPR',13,false,180,NOW(),NOW()),
-  ('s-landing','p00000000000000000000001','landing','Landing in Canada','Prepare for landing',14,false,90,NOW(),NOW())
-) AS v(id, "pathwayId", code, name, description, "order", "autoUnlock", "estimatedDurationDays", "createdAt", "updatedAt") WHERE NOT EXISTS (SELECT 1 FROM "Stage" WHERE code = v.code);
+SELECT 's-planning','p00000000000000000000001','planning','Planning','Assess your pathway and set goals',1,true,3,NOW(),NOW()
+WHERE NOT EXISTS (SELECT 1 FROM "Stage" WHERE code = 'planning');
+INSERT INTO "Stage" (id, "pathwayId", code, name, description, "order", "autoUnlock", "estimatedDurationDays", "createdAt", "updatedAt")
+SELECT 's-eligibility','p00000000000000000000001','eligibility','Eligibility','Check FSW 67 points and CRS',2,true,7,NOW(),NOW()
+WHERE NOT EXISTS (SELECT 1 FROM "Stage" WHERE code = 'eligibility');
+INSERT INTO "Stage" (id, "pathwayId", code, name, description, "order", "autoUnlock", "estimatedDurationDays", "createdAt", "updatedAt")
+SELECT 's-documents','p00000000000000000000001','documents','Document Gathering','Collect all required documents',3,true,14,NOW(),NOW()
+WHERE NOT EXISTS (SELECT 1 FROM "Stage" WHERE code = 'documents');
+INSERT INTO "Stage" (id, "pathwayId", code, name, description, "order", "autoUnlock", "estimatedDurationDays", "createdAt", "updatedAt")
+SELECT 's-credential','p00000000000000000000001','credential-assessment','Credential Assessment','Get ECA from designated org',4,false,60,NOW(),NOW()
+WHERE NOT EXISTS (SELECT 1 FROM "Stage" WHERE code = 'credential-assessment');
+INSERT INTO "Stage" (id, "pathwayId", code, name, description, "order", "autoUnlock", "estimatedDurationDays", "createdAt", "updatedAt")
+SELECT 's-language','p00000000000000000000001','language-tests','Language Tests','Take IELTS/CELPIP/TEF',5,true,45,NOW(),NOW()
+WHERE NOT EXISTS (SELECT 1 FROM "Stage" WHERE code = 'language-tests');
+INSERT INTO "Stage" (id, "pathwayId", code, name, description, "order", "autoUnlock", "estimatedDurationDays", "createdAt", "updatedAt")
+SELECT 's-employment','p00000000000000000000001','employment','Employment Verification','Collect reference letters',6,true,30,NOW(),NOW()
+WHERE NOT EXISTS (SELECT 1 FROM "Stage" WHERE code = 'employment');
+INSERT INTO "Stage" (id, "pathwayId", code, name, description, "order", "autoUnlock", "estimatedDurationDays", "createdAt", "updatedAt")
+SELECT 's-pof','p00000000000000000000001','proof-of-funds','Proof of Funds','Show settlement funds',7,true,14,NOW(),NOW()
+WHERE NOT EXISTS (SELECT 1 FROM "Stage" WHERE code = 'proof-of-funds');
+INSERT INTO "Stage" (id, "pathwayId", code, name, description, "order", "autoUnlock", "estimatedDurationDays", "createdAt", "updatedAt")
+SELECT 's-ee-profile','p00000000000000000000001','ee-profile','Express Entry Profile','Create and submit EE profile',8,false,3,NOW(),NOW()
+WHERE NOT EXISTS (SELECT 1 FROM "Stage" WHERE code = 'ee-profile');
+INSERT INTO "Stage" (id, "pathwayId", code, name, description, "order", "autoUnlock", "estimatedDurationDays", "createdAt", "updatedAt")
+SELECT 's-ita','p00000000000000000000001','ita-prep','ITA Preparation','Prepare documents for ITA',9,false,30,NOW(),NOW()
+WHERE NOT EXISTS (SELECT 1 FROM "Stage" WHERE code = 'ita-prep');
+INSERT INTO "Stage" (id, "pathwayId", code, name, description, "order", "autoUnlock", "estimatedDurationDays", "createdAt", "updatedAt")
+SELECT 's-medical','p00000000000000000000001','medical','Medical Exam','Complete immigration medical',10,true,30,NOW(),NOW()
+WHERE NOT EXISTS (SELECT 1 FROM "Stage" WHERE code = 'medical');
+INSERT INTO "Stage" (id, "pathwayId", code, name, description, "order", "autoUnlock", "estimatedDurationDays", "createdAt", "updatedAt")
+SELECT 's-police','p00000000000000000000001','police-certificates','Police Certificates','Obtain PCC from all countries',11,false,60,NOW(),NOW()
+WHERE NOT EXISTS (SELECT 1 FROM "Stage" WHERE code = 'police-certificates');
+INSERT INTO "Stage" (id, "pathwayId", code, name, description, "order", "autoUnlock", "estimatedDurationDays", "createdAt", "updatedAt")
+SELECT 's-final-pr','p00000000000000000000001','final-pr','Final PR Application','Submit e-APR',12,false,14,NOW(),NOW()
+WHERE NOT EXISTS (SELECT 1 FROM "Stage" WHERE code = 'final-pr');
+INSERT INTO "Stage" (id, "pathwayId", code, name, description, "order", "autoUnlock", "estimatedDurationDays", "createdAt", "updatedAt")
+SELECT 's-approval','p00000000000000000000001','approval','Approval & COPR','Wait for PPR and COPR',13,false,180,NOW(),NOW()
+WHERE NOT EXISTS (SELECT 1 FROM "Stage" WHERE code = 'approval');
+INSERT INTO "Stage" (id, "pathwayId", code, name, description, "order", "autoUnlock", "estimatedDurationDays", "createdAt", "updatedAt")
+SELECT 's-landing','p00000000000000000000001','landing','Landing in Canada','Prepare for landing',14,false,90,NOW(),NOW()
+WHERE NOT EXISTS (SELECT 1 FROM "Stage" WHERE code = 'landing');
 
 INSERT INTO "Application" (id, "userId", "pathwayId", label, status, "currentStageId", "crsScore", "targetCrsScore", "healthScore", "readinessScore", "createdAt", "updatedAt")
 SELECT 'a000000000000000000001','u00000000000000000000001','p00000000000000000000001','Canada PR — Express Entry','IN_PROGRESS'::"ApplicationStatus",'s-credential',456,470,84,68,NOW(),NOW()
@@ -88,19 +113,44 @@ SELECT 'ap00000000000000000001','a000000000000000000001','PRIMARY'::"ApplicantTy
 WHERE NOT EXISTS (SELECT 1 FROM "Applicant" WHERE id = 'ap00000000000000000001');
 
 INSERT INTO "ApplicationStage" (id, "applicationId", "stageId", status, progress, "createdAt", "updatedAt")
-SELECT v.id, v.applicationId, v.stageId, v.status, v.progress, v.createdAt, v.updatedAt FROM (VALUES
-  ('as-planning','a000000000000000000001','s-planning','COMPLETED'::"StageStatus",100,NOW(),NOW()),
-  ('as-elig','a000000000000000000001','s-eligibility','COMPLETED'::"StageStatus",100,NOW(),NOW()),
-  ('as-docs','a000000000000000000001','s-documents','COMPLETED'::"StageStatus",100,NOW(),NOW()),
-  ('as-cred','a000000000000000000001','s-credential','IN_PROGRESS'::"StageStatus",40,NOW(),NOW()),
-  ('as-lang','a000000000000000000001','s-language','IN_PROGRESS'::"StageStatus",25,NOW(),NOW()),
-  ('as-emp','a000000000000000000001','s-employment','UNLOCKED'::"StageStatus",10,NOW(),NOW()),
-  ('as-pof','a000000000000000000001','s-proof-of-funds','UNLOCKED'::"StageStatus",0,NOW(),NOW()),
-  ('as-ee','a000000000000000000001','s-ee-profile','LOCKED'::"StageStatus",0,NOW(),NOW()),
-  ('as-ita','a000000000000000000001','s-ita-prep','LOCKED'::"StageStatus",0,NOW(),NOW()),
-  ('as-med','a000000000000000000001','s-medical','LOCKED'::"StageStatus",0,NOW(),NOW()),
-  ('as-police','a000000000000000000001','s-police-certificates','LOCKED'::"StageStatus",0,NOW(),NOW()),
-  ('as-final','a000000000000000000001','s-final-pr','LOCKED'::"StageStatus",0,NOW(),NOW()),
-  ('as-approval','a000000000000000000001','s-approval','LOCKED'::"StageStatus",0,NOW(),NOW()),
-  ('as-landing','a000000000000000000001','s-landing','LOCKED'::"StageStatus",0,NOW(),NOW())
-) AS v(id, "applicationId", "stageId", status, progress, "createdAt", "updatedAt") WHERE NOT EXISTS (SELECT 1 FROM "ApplicationStage" WHERE id = v.id);
+SELECT 'as-planning','a000000000000000000001','s-planning','COMPLETED'::"StageStatus",100,NOW(),NOW()
+WHERE NOT EXISTS (SELECT 1 FROM "ApplicationStage" WHERE id = 'as-planning');
+INSERT INTO "ApplicationStage" (id, "applicationId", "stageId", status, progress, "createdAt", "updatedAt")
+SELECT 'as-elig','a000000000000000000001','s-eligibility','COMPLETED'::"StageStatus",100,NOW(),NOW()
+WHERE NOT EXISTS (SELECT 1 FROM "ApplicationStage" WHERE id = 'as-elig');
+INSERT INTO "ApplicationStage" (id, "applicationId", "stageId", status, progress, "createdAt", "updatedAt")
+SELECT 'as-docs','a000000000000000000001','s-documents','COMPLETED'::"StageStatus",100,NOW(),NOW()
+WHERE NOT EXISTS (SELECT 1 FROM "ApplicationStage" WHERE id = 'as-docs');
+INSERT INTO "ApplicationStage" (id, "applicationId", "stageId", status, progress, "createdAt", "updatedAt")
+SELECT 'as-cred','a000000000000000000001','s-credential','IN_PROGRESS'::"StageStatus",40,NOW(),NOW()
+WHERE NOT EXISTS (SELECT 1 FROM "ApplicationStage" WHERE id = 'as-cred');
+INSERT INTO "ApplicationStage" (id, "applicationId", "stageId", status, progress, "createdAt", "updatedAt")
+SELECT 'as-lang','a000000000000000000001','s-language','IN_PROGRESS'::"StageStatus",25,NOW(),NOW()
+WHERE NOT EXISTS (SELECT 1 FROM "ApplicationStage" WHERE id = 'as-lang');
+INSERT INTO "ApplicationStage" (id, "applicationId", "stageId", status, progress, "createdAt", "updatedAt")
+SELECT 'as-emp','a000000000000000000001','s-employment','UNLOCKED'::"StageStatus",10,NOW(),NOW()
+WHERE NOT EXISTS (SELECT 1 FROM "ApplicationStage" WHERE id = 'as-emp');
+INSERT INTO "ApplicationStage" (id, "applicationId", "stageId", status, progress, "createdAt", "updatedAt")
+SELECT 'as-pof','a000000000000000000001','s-proof-of-funds','UNLOCKED'::"StageStatus",0,NOW(),NOW()
+WHERE NOT EXISTS (SELECT 1 FROM "ApplicationStage" WHERE id = 'as-pof');
+INSERT INTO "ApplicationStage" (id, "applicationId", "stageId", status, progress, "createdAt", "updatedAt")
+SELECT 'as-ee','a000000000000000000001','s-ee-profile','LOCKED'::"StageStatus",0,NOW(),NOW()
+WHERE NOT EXISTS (SELECT 1 FROM "ApplicationStage" WHERE id = 'as-ee');
+INSERT INTO "ApplicationStage" (id, "applicationId", "stageId", status, progress, "createdAt", "updatedAt")
+SELECT 'as-ita','a000000000000000000001','s-ita-prep','LOCKED'::"StageStatus",0,NOW(),NOW()
+WHERE NOT EXISTS (SELECT 1 FROM "ApplicationStage" WHERE id = 'as-ita');
+INSERT INTO "ApplicationStage" (id, "applicationId", "stageId", status, progress, "createdAt", "updatedAt")
+SELECT 'as-med','a000000000000000000001','s-medical','LOCKED'::"StageStatus",0,NOW(),NOW()
+WHERE NOT EXISTS (SELECT 1 FROM "ApplicationStage" WHERE id = 'as-med');
+INSERT INTO "ApplicationStage" (id, "applicationId", "stageId", status, progress, "createdAt", "updatedAt")
+SELECT 'as-police','a000000000000000000001','s-police-certificates','LOCKED'::"StageStatus",0,NOW(),NOW()
+WHERE NOT EXISTS (SELECT 1 FROM "ApplicationStage" WHERE id = 'as-police');
+INSERT INTO "ApplicationStage" (id, "applicationId", "stageId", status, progress, "createdAt", "updatedAt")
+SELECT 'as-final','a000000000000000000001','s-final-pr','LOCKED'::"StageStatus",0,NOW(),NOW()
+WHERE NOT EXISTS (SELECT 1 FROM "ApplicationStage" WHERE id = 'as-final');
+INSERT INTO "ApplicationStage" (id, "applicationId", "stageId", status, progress, "createdAt", "updatedAt")
+SELECT 'as-approval','a000000000000000000001','s-approval','LOCKED'::"StageStatus",0,NOW(),NOW()
+WHERE NOT EXISTS (SELECT 1 FROM "ApplicationStage" WHERE id = 'as-approval');
+INSERT INTO "ApplicationStage" (id, "applicationId", "stageId", status, progress, "createdAt", "updatedAt")
+SELECT 'as-landing','a000000000000000000001','s-landing','LOCKED'::"StageStatus",0,NOW(),NOW()
+WHERE NOT EXISTS (SELECT 1 FROM "ApplicationStage" WHERE id = 'as-landing');
