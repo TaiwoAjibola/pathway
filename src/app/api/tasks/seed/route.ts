@@ -175,6 +175,13 @@ export async function POST() {
       stageMap.set(s.stage.code, s.stage.id)
     }
 
+    // Ensure a default template record exists for the foreign key
+    await prisma.taskTemplate.upsert({
+      where: { id: "template" },
+      update: {},
+      create: { id: "template", name: "Default Template", description: "Auto-generated" },
+    })
+
     let created = 0
     for (const t of TASKS) {
       const stageId = stageMap.get(t.stageCode)
