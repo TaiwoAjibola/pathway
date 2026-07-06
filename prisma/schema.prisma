@@ -1,0 +1,584 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String        @id @default(cuid())
+  name           String?
+  email          String        @unique
+  emailVerified  DateTime?
+  image          String?
+  hashedPassword String?
+  applications   Application[]
+  accounts       Account[]
+  sessions       Session[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Pathway {
+  id              String   @id @default(cuid())
+  code            String   @unique
+  name            String
+  description     String?
+  country         String
+  visaCategory    String
+  version         String   @default("1.0.0")
+  active          Boolean  @default(true)
+  config          Json
+  stages          Stage[]
+  documentTemplates DocumentTemplate[]
+  applications    Application[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Stage {
+  id          String   @id @default(cuid())
+  pathwayId   String
+  code        String
+  name        String
+  description String?
+  order       Int
+  autoUnlock  Boolean  @default(false)
+  estimatedDurationDays Int?
+  config      Json?
+  pathway     Pathway  @relation(fields: [pathwayId], references: [id], onDelete: Cascade)
+  tasks       TaskTemplate[]
+  applications ApplicationStage[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([pathwayId, code])
+}
+
+model TaskTemplate {
+  id                   String   @id @default(cuid())
+  stageId              String
+  code                 String
+  title                String
+  description          String?
+  reason               String?
+  priority             Priority @default(MEDIUM)
+  difficulty           Difficulty @default(MODERATE)
+  estimatedTimeMinutes Int      @default(30)
+  autoUnlock           Boolean  @default(true)
+  autoComplete         Boolean  @default(false)
+  completionCriteria   Json?
+  helpfulResources     Json?
+  stage                Stage    @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  dependencies         TaskDependency[] @relation("TaskTemplateDependencies")
+  dependedBy           TaskDependency[] @relation("TaskTemplateDependedBy")
+  instances            TaskInstance[]
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@unique([stageId, code])
+}
+
+model TaskDependency {
+  id            String       @id @default(cuid())
+  taskId        String
+  dependsOnId   String
+  task          TaskTemplate @relation("TaskTemplateDependencies", fields: [taskId], references: [id], onDelete: Cascade)
+  dependsOn     TaskTemplate @relation("TaskTemplateDependedBy", fields: [dependsOnId], references: [id], onDelete: Cascade)
+  createdAt     DateTime     @default(now())
+
+  @@unique([taskId, dependsOnId])
+}
+
+model Application {
+  id                 String   @id @default(cuid())
+  userId             String
+  pathwayId          String
+  label              String
+  status             ApplicationStatus @default(PLANNING)
+  currentStageId     String?
+  crsScore           Int      @default(0)
+  targetCrsScore     Int      @default(500)
+  healthScore        Int      @default(100)
+  readinessScore     Int      @default(0)
+  estimatedCompletionDate DateTime?
+  daysRemaining      Int      @default(0)
+  journeyVelocity    Float    @default(0)
+  metadata           Json?
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pathway            Pathway  @relation(fields: [pathwayId], references: [id])
+  applicants         Applicant[]
+  stageProgress      ApplicationStage[]
+  taskInstances      TaskInstance[]
+  notifications      Notification[]
+  crsSnapshots       CRSSnapshot[]
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model Applicant {
+  id                 String   @id @default(cuid())
+  applicationId      String
+  type               ApplicantType @default(PRIMARY)
+  isDependent        Boolean  @default(false)
+  firstName          String
+  lastName           String
+  dateOfBirth        DateTime?
+  nationality        String?
+  countryOfResidence String?
+  maritalStatus      MaritalStatus @default(SINGLE)
+  email              String?
+  phone              String?
+  metadata           Json?
+  application        Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  educationEntries   Education[]
+  employmentEntries  Employment[]
+  languageTests      LanguageTest[]
+  documents          Document[]
+  immigrationHistory ImmigrationRecord[]
+  credentialAssessments CredentialAssessment[]
+  medicalStatus      MedicalStatus @default(NOT_STARTED)
+  policeCertificates PoliceCertificate[]
+  proofOfFunds       ProofOfFunds?
+  taskInstances      TaskInstance[]
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+}
+
+model ApplicationStage {
+  id            String      @id @default(cuid())
+  applicationId String
+  stageId       String
+  status        StageStatus @default(LOCKED)
+  progress      Float       @default(0)
+  startedAt     DateTime?
+  completedAt   DateTime?
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  stage         Stage       @relation(fields: [stageId], references: [id])
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([applicationId, stageId])
+}
+
+model TaskInstance {
+  id                 String       @id @default(cuid())
+  applicationId      String
+  applicantId        String?
+  templateId         String
+  stageId            String
+  title              String
+  description        String?
+  reason             String?
+  priority           Priority     @default(MEDIUM)
+  difficulty         Difficulty   @default(MODERATE)
+  estimatedTimeMinutes Int        @default(30)
+  dueDate            DateTime?
+  completedDate      DateTime?
+  status             TaskStatus   @default(NOT_STARTED)
+  notes              String?
+  evidence           Json?
+  helpfulResources   Json?
+  aiGuidance         String?
+  aiRisks            Json?
+  aiRecommendations  Json?
+  metadata           Json?
+  application        Application  @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  applicant          Applicant?   @relation(fields: [applicantId], references: [id])
+  template           TaskTemplate @relation(fields: [templateId], references: [id])
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+}
+
+model Document {
+  id                String          @id @default(cuid())
+  applicantId       String
+  templateId        String?
+  taskId            String?
+  name              String
+  description       String?
+  purpose           String?
+  issuingAuthority  String?
+  expirationRules   Json?
+  status            DocumentStatus  @default(NOT_UPLOADED)
+  reviewStatus      ReviewStatus    @default(PENDING)
+  aiReviewNotes     String?
+  reviewerNotes     String?
+  expiryDate        DateTime?
+  expiryReminderSent Boolean        @default(false)
+  commonMistakes    Json?
+  tips              Json?
+  applicant         Applicant       @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+  versions          DocumentVersion[]
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+}
+
+model DocumentVersion {
+  id            String   @id @default(cuid())
+  documentId    String
+  fileKey       String
+  fileName      String
+  fileSize      Int
+  mimeType      String
+  ocrText       String?
+  aiValidation  Json?
+  notes         String?
+  document      Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
+}
+
+model DocumentTemplate {
+  id                String   @id @default(cuid())
+  pathwayId         String
+  code              String
+  name              String
+  category          String
+  purpose           String?
+  issuingAuthority  String?
+  whenNeeded        String?
+  expirationRules   Json?
+  acceptedFormats   Json?
+  maxSizeMB         Int      @default(10)
+  colorRequirement  String   @default("EITHER")
+  notarizationRequired Boolean @default(false)
+  translationRequired  Boolean @default(false)
+  sampleUrl         String?
+  commonMistakes    Json?
+  tips              Json?
+  validationRules   Json?
+  aiValidationPrompt String?
+  expiryReminderDays Json?
+  pathway           Pathway  @relation(fields: [pathwayId], references: [id], onDelete: Cascade)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([pathwayId, code])
+}
+
+model Education {
+  id              String   @id @default(cuid())
+  applicantId     String
+  level           EducationLevel
+  field           String?
+  institution     String?
+  country         String?
+  startDate       DateTime?
+  endDate         DateTime?
+  earnedDate      DateTime?
+  status          String?
+  applicant       Applicant @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Employment {
+  id              String   @id @default(cuid())
+  applicantId     String
+  company         String
+  title           String
+  country         String?
+  startDate       DateTime?
+  endDate         DateTime?
+  isCurrent       Boolean  @default(false)
+  hoursPerWeek    Int?
+  durationYears   Float?
+  nocCode         String?
+  isSkilled       Boolean  @default(false)
+  applicant       Applicant @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model LanguageTest {
+  id                String          @id @default(cuid())
+  applicantId       String
+  testType          TestType
+  language          String
+  bookingStatus     BookingStatus   @default(NOT_BOOKED)
+  testCenter        String?
+  testDate          DateTime?
+  bookingReference  String?
+  resultStatus      ResultStatus    @default(PENDING)
+  listeningScore    Float?
+  readingScore      Float?
+  writingScore      Float?
+  speakingScore     Float?
+  overallScore      Float?
+  clbListening      Int?
+  clbReading        Int?
+  clbWriting        Int?
+  clbSpeaking       Int?
+  nclcLevel         Int?
+  testReportUrl     String?
+  expiryDate        DateTime?
+  studyStreak       Int             @default(0)
+  lastStudyDate     DateTime?
+  preparationStatus PreparationStatus @default(NOT_STARTED)
+  applicant         Applicant       @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+}
+
+model ImmigrationRecord {
+  id            String   @id @default(cuid())
+  applicantId   String
+  country       String
+  visaType      String?
+  entryDate     DateTime?
+  exitDate      DateTime?
+  status        String?
+  applicant     Applicant @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model CredentialAssessment {
+  id            String   @id @default(cuid())
+  applicantId   String
+  organization  String
+  status        String   @default("NOT_STARTED")
+  submittedDate DateTime?
+  receivedDate  DateTime?
+  equivalency   String?
+  reportUrl     String?
+  applicant     Applicant @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model PoliceCertificate {
+  id              String   @id @default(cuid())
+  applicantId     String
+  country         String
+  status          String   @default("NOT_STARTED")
+  appliedDate     DateTime?
+  receivedDate    DateTime?
+  expiryDate      DateTime?
+  documentUrl     String?
+  applicant       Applicant @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model ProofOfFunds {
+  id              String   @id @default(cuid())
+  applicantId     String   @unique
+  currency        String   @default("CAD")
+  amount          Float?
+  lastUpdated     DateTime?
+  documents       Json?
+  applicant       Applicant @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model CRSSnapshot {
+  id            String   @id @default(cuid())
+  applicationId String
+  totalScore    Int
+  ageScore      Int      @default(0)
+  educationScore Int     @default(0)
+  languageScore Int      @default(0)
+  secondLanguageScore Int @default(0)
+  workExperienceScore Int @default(0)
+  skillsTransferScore Int @default(0)
+  additionalScore     Int @default(0)
+  breakdown     Json?
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
+}
+
+model Notification {
+  id            String           @id @default(cuid())
+  applicationId String
+  type          NotificationType
+  title         String
+  message       String
+  urgency       NotificationUrgency @default(MEDIUM)
+  link          String?
+  read          Boolean          @default(false)
+  dismissed     Boolean          @default(false)
+  application   Application      @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+}
+
+enum Priority {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum Difficulty {
+  EASY
+  MODERATE
+  HARD
+  COMPLEX
+}
+
+enum TaskStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  WAITING
+  BLOCKED
+  COMPLETED
+  EXPIRED
+  NEEDS_REVIEW
+}
+
+enum ApplicationStatus {
+  PLANNING
+  ELIGIBILITY
+  DOCUMENTS
+  IN_PROGRESS
+  SUBMITTED
+  APPROVED
+  LANDED
+}
+
+enum ApplicantType {
+  PRIMARY
+  SPOUSE
+  CHILD
+}
+
+enum MaritalStatus {
+  SINGLE
+  MARRIED
+  COMMON_LAW
+  DIVORCED
+  WIDOWED
+  SEPARATED
+}
+
+enum StageStatus {
+  LOCKED
+  UNLOCKED
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum DocumentStatus {
+  NOT_UPLOADED
+  UPLOADED
+  REVIEWING
+  APPROVED
+  REJECTED
+  EXPIRING_SOON
+  EXPIRED
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  NEEDS_UPDATE
+}
+
+enum TestType {
+  IELTS_GENERAL
+  CELPIP
+  TEF
+  TCF
+}
+
+enum BookingStatus {
+  NOT_BOOKED
+  BOOKED
+  RESCHEDULED
+  CANCELLED
+}
+
+enum ResultStatus {
+  PENDING
+  RECEIVED
+  VALIDATED
+  EXPIRED
+}
+
+enum PreparationStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  READY
+  TAKEN
+}
+
+enum MedicalStatus {
+  NOT_STARTED
+  SCHEDULED
+  COMPLETED
+  PASSED
+  FAILED
+}
+
+enum EducationLevel {
+  HIGH_SCHOOL
+  DIPLOMA
+  BACHELORS
+  MASTERS
+  PHD
+}
+
+enum NotificationType {
+  TASK_DUE
+  TASK_OVERDUE
+  TASK_UNLOCKED
+  DOCUMENT_EXPIRING
+  DOCUMENT_EXPIRED
+  DRAW_ALERT
+  ITA_RECEIVED
+  MILESTONE
+  STAGNATION
+  POLICY_CHANGE
+  AI_RECOMMENDATION
+  APPOINTMENT_REMINDER
+}
+
+enum NotificationUrgency {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
