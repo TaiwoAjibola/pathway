@@ -1,208 +1,144 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Card, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { ProgressBar } from "@/components/ui/progress-bar"
-import { User, Heart, Baby, Plus, CheckCircle2, Clock, AlertCircle } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { User, Loader2, Save } from "lucide-react"
 
-const applicants = [
-  {
-    id: "primary",
-    type: "Primary Applicant",
-    typeIcon: User,
-    name: "John Doe",
-    dob: "Jan 15, 1997",
-    nationality: "Nigeria",
-    progress: 68,
-    tasksCompleted: 18,
-    tasksTotal: 35,
-    documentsCompleted: 12,
-    documentsTotal: 18,
-    status: "active",
-  },
-  {
-    id: "spouse",
-    type: "Spouse",
-    typeIcon: Heart,
-    name: "Jane Doe",
-    dob: "Mar 22, 1999",
-    nationality: "Nigeria",
-    progress: 45,
-    tasksCompleted: 8,
-    tasksTotal: 20,
-    documentsCompleted: 5,
-    documentsTotal: 12,
-    status: "active",
-  },
-]
+type Applicant = {
+  id: string
+  firstName: string
+  lastName: string
+  dateOfBirth: string | null
+  nationality: string | null
+  countryOfResidence: string | null
+  maritalStatus: string
+  email: string | null
+  phone: string | null
+  type: string
+  educationEntries: Array<Record<string, unknown>>
+  employmentEntries: Array<Record<string, unknown>>
+}
 
 export default function ApplicantsPage() {
-  const [selected, setSelected] = useState("primary")
+  const [applicant, setApplicant] = useState<Applicant | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [form, setForm] = useState<Record<string, string>>({})
+
+  const fetchApplicant = () => {
+    fetch("/api/applicant").then((r) => r.json()).then((d) => {
+      setApplicant(d)
+      setForm({
+        firstName: d.firstName || "",
+        lastName: d.lastName || "",
+        dateOfBirth: d.dateOfBirth ? new Date(d.dateOfBirth).toISOString().split("T")[0] : "",
+        nationality: d.nationality || "",
+        countryOfResidence: d.countryOfResidence || "",
+        maritalStatus: d.maritalStatus || "SINGLE",
+        email: d.email || "",
+        phone: d.phone || "",
+      })
+    }).catch(console.error).finally(() => setLoading(false))
+  }
+
+  useEffect(fetchApplicant, [])
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault()
+    setSaving(true)
+    await fetch("/api/applicant", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    })
+    setSaving(false)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 3000)
+    fetchApplicant()
+  }
+
+  if (loading) return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-blue-500" /></div>
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Applicants</h1>
-          <p className="mt-1 text-sm text-gray-500">Manage all members of your application</p>
-        </div>
-        <Button>
-          <Plus className="h-4 w-4" />
-          Add Applicant
-        </Button>
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Applicants</h1>
+        <p className="mt-1 text-sm text-gray-500">Manage all members of your application</p>
       </div>
 
-      {/* Applicant Cards */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {applicants.map((app) => {
-          const isSelected = selected === app.id
-          return (
-            <Card
-              key={app.id}
-              className={`cursor-pointer transition-all ${
-                isSelected ? "ring-2 ring-blue-500" : ""
-              }`}
-              onClick={() => setSelected(app.id)}
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-4">
-                  <div className={`h-12 w-12 rounded-xl flex items-center justify-center ${
-                    app.id === "primary"
-                      ? "bg-blue-100 text-blue-600"
-                      : "bg-pink-100 text-pink-600"
-                  }`}>
-                    <app.typeIcon className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">{app.name}</p>
-                      <Badge variant="info">{app.type}</Badge>
-                    </div>
-                    <p className="text-sm text-gray-500">{app.nationality} · Born {app.dob}</p>
-                  </div>
-                </div>
-                {app.status === "active" && <Badge variant="success">Active</Badge>}
-              </div>
-
-              <div className="mt-4 grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs text-gray-500">Overall Progress</p>
-                  <p className="text-2xl font-bold text-gray-900">{app.progress}%</p>
-                  <ProgressBar progress={app.progress} size="sm" className="mt-1" />
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Tasks</p>
-                  <p className="text-2xl font-bold text-gray-900">{app.tasksCompleted}/{app.tasksTotal}</p>
-                  <ProgressBar progress={(app.tasksCompleted / app.tasksTotal) * 100} size="sm" className="mt-1" />
-                </div>
-              </div>
-
-              <div className="mt-3 flex items-center justify-between text-sm">
-                <span className="text-gray-500">Documents: {app.documentsCompleted}/{app.documentsTotal}</span>
-                <Button size="sm" variant="outline">View Profile</Button>
-              </div>
-            </Card>
-          )
-        })}
-
-        {/* Add new applicant card */}
-        <Card className="border-dashed border-2 border-gray-300 dark:border-gray-600 flex items-center justify-center min-h-[200px] cursor-pointer hover:border-blue-400 transition-colors">
-          <div className="text-center">
-            <div className="mx-auto h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center dark:bg-gray-800">
-              <Plus className="h-6 w-6 text-gray-400" />
+      {applicant && (
+        <Card>
+          <div className="flex items-center gap-4 mb-4">
+            <div className="h-12 w-12 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600">
+              <User className="h-6 w-6" />
             </div>
-            <p className="mt-3 text-sm font-medium text-gray-900 dark:text-gray-100">Add Family Member</p>
-            <p className="text-xs text-gray-500">Spouse, child, or dependent</p>
+            <div>
+              <div className="flex items-center gap-2">
+                <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">{applicant.firstName} {applicant.lastName}</p>
+                <Badge variant="info">{applicant.type}</Badge>
+              </div>
+              <p className="text-sm text-gray-500">{applicant.nationality || "N/A"}</p>
+            </div>
+          </div>
+
+          <CardTitle>Edit Profile</CardTitle>
+          <form onSubmit={handleSave} className="mt-4 space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Input label="First Name" value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} required />
+              <Input label="Last Name" value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} required />
+              <Input label="Date of Birth" type="date" value={form.dateOfBirth} onChange={(e) => setForm({ ...form, dateOfBirth: e.target.value })} />
+              <Input label="Nationality" value={form.nationality} onChange={(e) => setForm({ ...form, nationality: e.target.value })} />
+              <Input label="Country of Residence" value={form.countryOfResidence} onChange={(e) => setForm({ ...form, countryOfResidence: e.target.value })} />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Marital Status</label>
+                <select value={form.maritalStatus} onChange={(e) => setForm({ ...form, maritalStatus: e.target.value })}
+                  className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800">
+                  <option value="SINGLE">Single</option>
+                  <option value="MARRIED">Married</option>
+                  <option value="COMMON_LAW">Common Law</option>
+                  <option value="DIVORCED">Divorced</option>
+                  <option value="SEPARATED">Separated</option>
+                  <option value="WIDOWED">Widowed</option>
+                </select>
+              </div>
+              <Input label="Email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+              <Input label="Phone" type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+            </div>
+            <div className="flex gap-2">
+              <Button type="submit" loading={saving}><Save className="h-4 w-4" /> {saved ? "Saved!" : "Save Changes"}</Button>
+            </div>
+          </form>
+        </Card>
+      )}
+
+      {applicant?.educationEntries && applicant.educationEntries.length > 0 && (
+        <Card>
+          <CardTitle>Education</CardTitle>
+          <div className="mt-4 space-y-3">
+            {applicant.educationEntries.map((edu, i) => (
+              <div key={i} className="flex justify-between text-sm border-b border-gray-100 pb-2">
+                <span className="text-gray-900 font-medium">{edu.field as string || "N/A"}</span>
+                <span className="text-gray-500">{edu.level as string} · {edu.institution as string}</span>
+              </div>
+            ))}
           </div>
         </Card>
-      </div>
+      )}
 
-      {/* Selected Applicant Detail */}
-      {selected && (
+      {applicant?.employmentEntries && applicant.employmentEntries.length > 0 && (
         <Card>
-          <CardTitle>
-            {applicants.find((a) => a.id === selected)?.name} — Details
-          </CardTitle>
-          <CardDescription>Personal information, education, and employment</CardDescription>
-
-          <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            <div>
-              <p className="text-xs font-medium text-gray-500 uppercase mb-2">Personal Information</p>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-500">First Name</span>
-                  <span className="font-medium">John</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Last Name</span>
-                  <span className="font-medium">Doe</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Date of Birth</span>
-                  <span className="font-medium">Jan 15, 1997</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Nationality</span>
-                  <span className="font-medium">Nigeria</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Marital Status</span>
-                  <span className="font-medium">Married</span>
-                </div>
+          <CardTitle>Employment</CardTitle>
+          <div className="mt-4 space-y-3">
+            {applicant.employmentEntries.map((emp, i) => (
+              <div key={i} className="flex justify-between text-sm border-b border-gray-100 pb-2">
+                <span className="text-gray-900 font-medium">{emp.title as string}</span>
+                <span className="text-gray-500">{emp.company as string} · {emp.durationYears as string} yrs</span>
               </div>
-            </div>
-
-            <div>
-              <p className="text-xs font-medium text-gray-500 uppercase mb-2">Education</p>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Highest Level</span>
-                  <span className="font-medium">Master's Degree</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Field</span>
-                  <span className="font-medium">Computer Science</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Institution</span>
-                  <span className="font-medium">University of Lagos</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Year Completed</span>
-                  <span className="font-medium">2021</span>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <p className="text-xs font-medium text-gray-500 uppercase mb-2">Employment</p>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Current Job</span>
-                  <span className="font-medium">Software Engineer</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Company</span>
-                  <span className="font-medium">Tech Corp</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Years of Experience</span>
-                  <span className="font-medium">3 years</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">NOC Code</span>
-                  <span className="font-medium">21231 (TEER 1)</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-6 flex gap-2">
-            <Button size="sm">Edit Profile</Button>
-            <Button size="sm" variant="outline">Add Education</Button>
-            <Button size="sm" variant="outline">Add Employment</Button>
+            ))}
           </div>
         </Card>
       )}

@@ -6,9 +6,9 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ProgressBar } from "@/components/ui/progress-bar"
 import { calculateCRS, whatIfCRS, identifyOpportunities } from "@/lib/crs-engine"
-import { ArrowRight, Sparkles, TrendingUp, Target, BarChart3 } from "lucide-react"
+import { ArrowRight, Sparkles, TrendingUp, Target, Save } from "lucide-react"
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts"
-import type { CRSBreakdown, CRSOpportunity, WhatIfChange, LanguageScores } from "@/types"
+import type { CRSOpportunity, WhatIfChange, LanguageScores } from "@/types"
 
 export default function CRSPage() {
   const [age, setAge] = useState(29)
@@ -21,28 +21,38 @@ export default function CRSPage() {
   const [foreignExp, setForeignExp] = useState(3)
   const [includeFrench, setIncludeFrench] = useState(false)
   const [selectedWhatIf, setSelectedWhatIf] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
 
   const firstLang: LanguageScores = { listening, reading, writing, speaking }
-
   const input = {
-    age,
-    educationLevel: education,
-    firstLanguage: firstLang,
+    age, educationLevel: education, firstLanguage: firstLang,
     secondLanguage: includeFrench ? { listening: 7, reading: 7, writing: 7, speaking: 7 } : undefined,
-    canadianWorkExperienceYears: canadianExp,
-    foreignWorkExperienceYears: foreignExp,
-    hasPNPNomination: false,
-    hasJobOfferLMIA: false,
-    hasCanadianEducation: false,
-    hasCanadianSibling: false,
-    hasFrenchAbility: includeFrench,
+    canadianWorkExperienceYears: canadianExp, foreignWorkExperienceYears: foreignExp,
+    hasPNPNomination: false, hasJobOfferLMIA: false, hasCanadianEducation: false,
+    hasCanadianSibling: false, hasFrenchAbility: includeFrench,
   }
 
   const crs = calculateCRS(input)
   const opportunities = identifyOpportunities(input)
-
   const targetScore = 470
   const gap = targetScore - crs.totalScore
+
+  async function handleSave() {
+    setSaving(true)
+    await fetch("/api/crs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        totalScore: crs.totalScore,
+        breakdown: crs.breakdown,
+        input,
+      }),
+    })
+    setSaving(false)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 3000)
+  }
 
   const whatIfScenarios: { id: string; label: string; changes: WhatIfChange[] }[] = [
     { id: "clb9", label: "Improve IELTS to CLB 9", changes: [{ field: "firstLanguage.targetCLB9", value: 8, label: "" }] },
@@ -55,34 +65,33 @@ export default function CRSPage() {
     { id: "job-offer", label: "Job Offer (LMIA)", changes: [{ field: "jobOffer", value: true, label: "" }] },
   ]
 
-  const chartData = crs.breakdown.filter((f) => f.maxScore > 0).map((f) => ({
-    name: f.label,
-    score: f.score,
-    max: f.maxScore,
+  const chartData = crs.breakdown.filter((f: { maxScore: number }) => f.maxScore > 0).map((f: { label: string; score: number; maxScore: number }) => ({
+    name: f.label, score: f.score, max: f.maxScore,
     fill: f.score / f.maxScore >= 0.8 ? "#22c55e" : f.score / f.maxScore >= 0.5 ? "#3b82f6" : "#f59e0b",
   }))
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">CRS Calculator</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Comprehensive Ranking System — decision support for Express Entry
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">CRS Calculator</h1>
+          <p className="mt-1 text-sm text-gray-500">Comprehensive Ranking System — decision support for Express Entry</p>
+        </div>
+        <Button onClick={handleSave} loading={saving}>
+          <Save className="h-4 w-4" />
+          {saved ? "Saved!" : "Save Score"}
+        </Button>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Input Panel */}
         <Card className="lg:col-span-1">
           <CardTitle>Your Profile</CardTitle>
           <div className="mt-4 space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Age</label>
-              <input type="range" min={18} max={45} value={age} onChange={(e) => setAge(Number(e.target.value))}
-                className="mt-1 w-full" />
+              <input type="range" min={18} max={45} value={age} onChange={(e) => setAge(Number(e.target.value))} className="mt-1 w-full" />
               <span className="text-sm text-gray-500">{age} years</span>
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Education</label>
               <select value={education} onChange={(e) => setEducation(e.target.value)}
@@ -96,7 +105,6 @@ export default function CRSPage() {
                 <option value="PHD">PhD</option>
               </select>
             </div>
-
             <div>
               <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">First Language (IELTS)</p>
               {["Listening", "Reading", "Writing", "Speaking"].map((skill) => (
@@ -106,10 +114,8 @@ export default function CRSPage() {
                     value={skill === "Listening" ? listening : skill === "Reading" ? reading : skill === "Writing" ? writing : speaking}
                     onChange={(e) => {
                       const v = Number(e.target.value)
-                      if (skill === "Listening") setListening(v)
-                      else if (skill === "Reading") setReading(v)
-                      else if (skill === "Writing") setWriting(v)
-                      else setSpeaking(v)
+                      if (skill === "Listening") setListening(v); else if (skill === "Reading") setReading(v)
+                      else if (skill === "Writing") setWriting(v); else setSpeaking(v)
                     }}
                     className="flex-1" />
                   <span className="w-8 text-xs font-medium">
@@ -118,7 +124,6 @@ export default function CRSPage() {
                 </div>
               ))}
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Work Experience</label>
               <div className="mt-1 grid grid-cols-2 gap-2">
@@ -134,18 +139,14 @@ export default function CRSPage() {
                 </div>
               </div>
             </div>
-
             <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={includeFrench} onChange={(e) => setIncludeFrench(e.target.checked)}
-                className="rounded border-gray-300" />
+              <input type="checkbox" checked={includeFrench} onChange={(e) => setIncludeFrench(e.target.checked)} className="rounded border-gray-300" />
               <span>French proficiency (NCLC 7)</span>
             </label>
           </div>
         </Card>
 
-        {/* Results */}
         <div className="space-y-6 lg:col-span-2">
-          {/* Score */}
           <Card>
             <div className="flex items-center justify-between">
               <div>
@@ -154,13 +155,10 @@ export default function CRSPage() {
               </div>
               <Target className="h-8 w-8 text-blue-500" />
             </div>
-
             <div className="mt-6 flex items-end justify-center gap-8">
               <div className="text-center">
                 <p className="text-sm text-gray-500">Current</p>
-                <p className={`text-5xl font-bold ${gap > 0 ? "text-yellow-500" : "text-green-500"}`}>
-                  {crs.totalScore}
-                </p>
+                <p className={`text-5xl font-bold ${gap > 0 ? "text-yellow-500" : "text-green-500"}`}>{crs.totalScore}</p>
               </div>
               <div className="text-center">
                 <p className="text-sm text-gray-500">Target</p>
@@ -168,16 +166,12 @@ export default function CRSPage() {
               </div>
               <div className="text-center">
                 <p className="text-sm text-gray-500">Gap</p>
-                <p className={`text-5xl font-bold ${gap > 0 ? "text-red-500" : "text-green-500"}`}>
-                  {gap > 0 ? `-${gap}` : "+" + Math.abs(gap)}
-                </p>
+                <p className={`text-5xl font-bold ${gap > 0 ? "text-red-500" : "text-green-500"}`}>{gap > 0 ? `-${gap}` : `+${Math.abs(gap)}`}</p>
               </div>
             </div>
-
             <ProgressBar progress={(crs.totalScore / targetScore) * 100} size="lg" className="mt-6" barClassName={gap > 0 ? "bg-orange-500" : "bg-green-500"} />
           </Card>
 
-          {/* Breakdown Chart */}
           <Card>
             <CardTitle>Score Breakdown</CardTitle>
             <div className="mt-4 h-64">
@@ -191,22 +185,8 @@ export default function CRSPage() {
                 </BarChart>
               </ResponsiveContainer>
             </div>
-            <div className="mt-4 space-y-2">
-              {crs.breakdown.map((factor) => (
-                <div key={factor.category} className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600 dark:text-gray-400">{factor.label}</span>
-                  <div className="flex items-center gap-2">
-                    <ProgressBar progress={(factor.score / factor.maxScore) * 100} size="sm" className="w-32" />
-                    <span className="w-20 text-right font-medium">
-                      {factor.score}/{factor.maxScore}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
           </Card>
 
-          {/* What-If Scenarios */}
           <Card>
             <CardTitle className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-yellow-500" />
@@ -218,15 +198,11 @@ export default function CRSPage() {
                 const projection = whatIfCRS(input, scenario.changes)
                 const isSelected = selectedWhatIf === scenario.id
                 return (
-                  <div
-                    key={scenario.id}
+                  <div key={scenario.id}
                     className={`rounded-lg border p-4 cursor-pointer transition-all ${
-                      isSelected
-                        ? "border-blue-500 bg-blue-50 dark:bg-blue-950"
-                        : "border-gray-200 hover:border-blue-300 dark:border-gray-700"
+                      isSelected ? "border-blue-500 bg-blue-50 dark:bg-blue-950" : "border-gray-200 hover:border-blue-300 dark:border-gray-700"
                     }`}
-                    onClick={() => setSelectedWhatIf(isSelected ? null : scenario.id)}
-                  >
+                    onClick={() => setSelectedWhatIf(isSelected ? null : scenario.id)}>
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{scenario.label}</p>
                       <Badge variant={projection.pointsGained > 0 ? "success" : "outline"}>
@@ -240,14 +216,7 @@ export default function CRSPage() {
                           <ArrowRight className="mx-2 inline h-3 w-3" />
                           New: <strong>{projection.newScore}</strong>
                         </p>
-                        {projection.wouldQualify && (
-                          <Badge variant="success">Would qualify! 🎯</Badge>
-                        )}
-                        {!projection.wouldQualify && projection.cutoffComparison && (
-                          <p className="text-yellow-600">
-                            Still {Math.abs(projection.cutoffComparison.gap)} points below cutoff
-                          </p>
-                        )}
+                        {projection.wouldQualify && <Badge variant="success">Would qualify!</Badge>}
                       </div>
                     )}
                   </div>
@@ -256,7 +225,6 @@ export default function CRSPage() {
             </div>
           </Card>
 
-          {/* Opportunities */}
           <Card>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-green-500" />
