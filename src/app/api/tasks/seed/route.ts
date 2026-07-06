@@ -175,13 +175,6 @@ export async function POST() {
       stageMap.set(s.stage.code, s.stage.id)
     }
 
-    // Ensure a default template record exists for the foreign key
-    await prisma.taskTemplate.upsert({
-      where: { id: "template" },
-      update: {},
-      create: { id: "template", name: "Default Template", description: "Auto-generated" },
-    })
-
     let created = 0
     for (const t of TASKS) {
       const stageId = stageMap.get(t.stageCode)
@@ -194,7 +187,6 @@ export async function POST() {
         data: {
           applicationId: appId,
           stageId,
-          templateId: "template",
           title: t.title,
           priority: t.priority as "CRITICAL" | "HIGH" | "MEDIUM" | "LOW",
           status: "NOT_STARTED",
@@ -216,7 +208,7 @@ export async function DELETE() {
   try {
     const { appId } = await getIds()
     const result = await prisma.taskInstance.deleteMany({
-      where: { applicationId: appId, templateId: "template" },
+      where: { applicationId: appId },
     })
     return NextResponse.json({ deleted: result.count })
   } catch (error) {

@@ -205,7 +205,7 @@ model TaskInstance {
   id                 String       @id @default(cuid())
   applicationId      String
   applicantId        String?
-  templateId         String
+  templateId         String?
   stageId            String
   title              String
   description        String?
@@ -225,7 +225,7 @@ model TaskInstance {
   metadata           Json?
   application        Application  @relation(fields: [applicationId], references: [id], onDelete: Cascade)
   applicant          Applicant?   @relation(fields: [applicantId], references: [id])
-  template           TaskTemplate @relation(fields: [templateId], references: [id])
+  template           TaskTemplate? @relation(fields: [templateId], references: [id])
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt
 }
