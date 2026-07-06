@@ -158,52 +158,62 @@ const TASKS = [
 ]
 
 export async function POST() {
-  const { appId } = getIds()
+  try {
+    const { appId } = getIds()
 
-  const existing = await prisma.taskInstance.count({ where: { applicationId: appId } })
-  if (existing > 0) {
-    return NextResponse.json({ error: `Already have ${existing} tasks. Delete them first if you want to reload.` }, { status: 400 })
-  }
+    const existing = await prisma.taskInstance.count({ where: { applicationId: appId } })
+    if (existing > 0) {
+      return NextResponse.json({ error: `Already have ${existing} tasks. Delete them first if you want to reload.` }, { status: 400 })
+    }
 
-  const stageMap = new Map<string, string>()
-  const stages = await prisma.applicationStage.findMany({
-    where: { applicationId: appId },
-    include: { stage: true },
-  })
-  for (const s of stages) {
-    stageMap.set(s.stage.code, s.stage.id)
-  }
-
-  let created = 0
-  for (const t of TASKS) {
-    const stageId = stageMap.get(t.stageCode)
-    if (!stageId) continue
-
-    const metadata: Record<string, unknown> = {}
-    if (t.dependsOn) metadata.dependsOn = t.dependsOn
-
-    await prisma.taskInstance.create({
-      data: {
-        applicationId: appId,
-        stageId,
-        templateId: "template",
-        title: t.title,
-        priority: t.priority as "CRITICAL" | "HIGH" | "MEDIUM" | "LOW",
-        status: "NOT_STARTED",
-        estimatedTimeMinutes: 30,
-        metadata: metadata as Prisma.InputJsonValue,
-      },
+    const stageMap = new Map<string, string>()
+    const stages = await prisma.applicationStage.findMany({
+      where: { applicationId: appId },
+      include: { stage: true },
     })
-    created++
-  }
+    for (const s of stages) {
+      stageMap.set(s.stage.code, s.stage.id)
+    }
 
-  return NextResponse.json({ created, total: TASKS.length })
+    let created = 0
+    for (const t of TASKS) {
+      const stageId = stageMap.get(t.stageCode)
+      if (!stageId) continue
+
+      const metadata: Record<string, unknown> = {}
+      if (t.dependsOn) metadata.dependsOn = t.dependsOn
+
+      await prisma.taskInstance.create({
+        data: {
+          applicationId: appId,
+          stageId,
+          templateId: "template",
+          title: t.title,
+          priority: t.priority as "CRITICAL" | "HIGH" | "MEDIUM" | "LOW",
+          status: "NOT_STARTED",
+          estimatedTimeMinutes: 30,
+          metadata: metadata as Prisma.InputJsonValue,
+        },
+      })
+      created++
+    }
+
+    return NextResponse.json({ created, total: TASKS.length })
+  } catch (error) {
+    console.error("API POST error:", error)
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 })
+  }
 }
 
 export async function DELETE() {
-  const { appId } = getIds()
-  const result = await prisma.taskInstance.deleteMany({
-    where: { applicationId: appId, templateId: "template" },
-  })
-  return NextResponse.json({ deleted: result.count })
+  try {
+    const { appId } = getIds()
+    const result = await prisma.taskInstance.deleteMany({
+      where: { applicationId: appId, templateId: "template" },
+    })
+    return NextResponse.json({ deleted: result.count })
+  } catch (error) {
+    console.error("API DELETE error:", error)
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 })
+  }
 }
