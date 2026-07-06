@@ -4,9 +4,18 @@ import { useEffect, useState } from "react"
 import { Card, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Loader2, Save, Share2, Copy, Check } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Loader2, Save, Share2, Copy, Check, UserPlus, X, Mail, Shield } from "lucide-react"
 
 type User = { id: string; name: string | null; email: string }
+
+type FamilyMember = {
+  id: string
+  name: string
+  email: string | null
+  role: "VIEWER" | "EDITOR"
+  inviteCode: string | null
+}
 
 export default function SettingsPage() {
   const [user, setUser] = useState<User | null>(null)
@@ -17,6 +26,19 @@ export default function SettingsPage() {
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [shareUrl, setShareUrl] = useState("")
+  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([])
+  const [newMemberName, setNewMemberName] = useState("")
+  const [newMemberEmail, setNewMemberEmail] = useState("")
+
+  async function loadFamily() {
+    try {
+      const res = await fetch("/api/family")
+      const data = await res.json()
+      setFamilyMembers(data)
+    } catch {
+      // ignore
+    }
+  }
 
   useEffect(() => {
     setShareUrl(window.location.origin)
@@ -25,6 +47,7 @@ export default function SettingsPage() {
       setName(d.name || "")
       setEmail(d.email || "")
     }).catch(console.error).finally(() => setLoading(false))
+    loadFamily()
   }, [])
 
   async function handleSave(e: React.FormEvent) {
@@ -46,13 +69,33 @@ export default function SettingsPage() {
     setTimeout(() => setCopied(false), 3000)
   }
 
+  async function addMember() {
+    if (!newMemberName.trim()) return
+    await fetch("/api/family", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: newMemberName.trim(),
+        email: newMemberEmail.trim() || null,
+      }),
+    })
+    setNewMemberName("")
+    setNewMemberEmail("")
+    await loadFamily()
+  }
+
+  async function removeMember(id: string) {
+    await fetch(`/api/family?id=${id}`, { method: "DELETE" })
+    await loadFamily()
+  }
+
   if (loading) return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-blue-500" /></div>
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Settings</h1>
-        <p className="mt-1 text-sm text-gray-500">Manage your account and share with family</p>
+        <p className="mt-1 text-sm text-gray-500">Manage your account and share your journey with family</p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -69,15 +112,14 @@ export default function SettingsPage() {
         </Card>
 
         <div className="space-y-6">
-          {/* Share */}
           <Card className="border-blue-200 dark:border-blue-800">
             <div className="flex items-center gap-3 mb-4">
               <div className="rounded-full bg-blue-100 p-2 text-blue-600">
                 <Share2 className="h-5 w-5" />
               </div>
               <div>
-                <CardTitle>Share with Family</CardTitle>
-                <CardDescription>Give this link to your wife so she can see progress too</CardDescription>
+                <CardTitle>Share Journey</CardTitle>
+                <CardDescription>Share your Canada PR progress with family members</CardDescription>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -89,22 +131,49 @@ export default function SettingsPage() {
               </Button>
             </div>
             <p className="mt-2 text-xs text-gray-500">
-              Anyone with this link can view and update your immigration plan. Share it with your wife to collaborate.
+              Share this link with family so they can follow your Express Entry journey.
             </p>
           </Card>
 
-          {/* Info */}
           <Card>
             <CardTitle className="flex items-center gap-2">
-              <Share2 className="h-4 w-4" />
-              How It Works
+              <UserPlus className="h-4 w-4" />
+              Family Members
             </CardTitle>
-            <div className="mt-4 space-y-3 text-sm text-gray-600 dark:text-gray-400">
-              <p>1. <strong>Add tasks</strong> for each stage of your Express Entry journey</p>
-              <p>2. <strong>Add family members</strong> — spouse, children, dependents</p>
-              <p>3. <strong>Assign tasks</strong> to each person and set due dates</p>
-              <p>4. <strong>Track progress</strong> on the dashboard and timeline</p>
-              <p>5. <strong>Share the link</strong> with your wife so you can plan together</p>
+            <div className="mt-4 space-y-3">
+              {familyMembers.length > 0 && (
+                <div className="space-y-2">
+                  {familyMembers.map((m) => (
+                    <div key={m.id} className="flex items-center justify-between rounded-lg border border-gray-100 px-3 py-2.5 dark:border-gray-800">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-xs font-medium text-gray-600 dark:bg-gray-800">
+                          {m.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">{m.name}</p>
+                          {m.email && <p className="text-xs text-gray-500">{m.email}</p>}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={m.role === "EDITOR" ? "info" : "outline"}>
+                          {m.role === "EDITOR" ? "Editor" : "Viewer"}
+                        </Badge>
+                        <button onClick={() => removeMember(m.id)} className="rounded-full p-1 text-gray-400 hover:bg-red-50 hover:text-red-500">
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="space-y-2">
+                <Input label="Name" value={newMemberName} onChange={(e) => setNewMemberName(e.target.value)} placeholder="Family member's name" />
+                <Input label="Email (optional)" type="email" value={newMemberEmail} onChange={(e) => setNewMemberEmail(e.target.value)} placeholder="email@example.com" />
+                <Button onClick={addMember} disabled={!newMemberName.trim()}>
+                  <UserPlus className="h-4 w-4" />
+                  Add Member
+                </Button>
+              </div>
             </div>
           </Card>
         </div>

@@ -2,6 +2,21 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getIds } from "@/lib/data"
 
+export async function GET() {
+  try {
+    const { appId } = await getIds()
+    if (!appId) return NextResponse.json([], { status: 200 })
+    const snapshots = await prisma.cRSSnapshot.findMany({
+      where: { applicationId: appId },
+      orderBy: { createdAt: "desc" },
+    })
+    return NextResponse.json(snapshots)
+  } catch (error) {
+    console.error("API GET error:", error)
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 })
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json()

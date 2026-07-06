@@ -30,6 +30,10 @@ export async function getApplication() {
         orderBy: { stage: { order: "asc" } },
       },
       taskInstances: {
+        include: {
+          assignees: { include: { applicant: true } },
+          documents: true,
+        },
         orderBy: { createdAt: "desc" },
       },
       crsSnapshots: {
@@ -68,6 +72,7 @@ export async function getDocuments() {
   if (!applicantId) return []
   return prisma.document.findMany({
     where: { applicantId },
+    include: { task: true },
     orderBy: { createdAt: "desc" },
   })
 }
@@ -77,6 +82,7 @@ export async function getTasks() {
   if (!appId) return []
   return prisma.taskInstance.findMany({
     where: { applicationId: appId },
+    include: { assignees: { include: { applicant: true } } },
     orderBy: [{ priority: "asc" }, { createdAt: "desc" }],
   })
 }

@@ -175,6 +175,41 @@ export async function POST() {
       stageMap.set(s.stage.code, s.stage.id)
     }
 
+    const applicants = await prisma.applicant.findMany({ where: { applicationId: appId } })
+    const primary = applicants.find(a => a.type === "PRIMARY")!
+    const spouse = applicants.find(a => a.type === "SPOUSE")
+    const child = applicants.find(a => a.type === "CHILD")
+
+    function getAssigneeIds(owner: string): string[] {
+      switch (owner) {
+        case "me": return [primary.id]
+        case "spouse": return spouse ? [spouse.id] : []
+        case "both": return spouse ? [primary.id, spouse.id] : [primary.id]
+        case "child": return child ? [child.id] : []
+        default: return [primary.id]
+      }
+    }
+
+    function getTaskType(stageCode: string): "DOCUMENT" | "EXAM" | "PAYMENT" | "APPLICATION" | "APPOINTMENT" | "STUDY" | "TRAVEL" | "MEDICAL" | "POLICE_CERTIFICATE" | "CREDENTIAL_ASSESSMENT" | "LANGUAGE_TEST" | "OTHER" {
+      switch (stageCode) {
+        case "planning": return "OTHER"
+        case "eligibility": return "APPLICATION"
+        case "documents": return "DOCUMENT"
+        case "credential-assessment": return "CREDENTIAL_ASSESSMENT"
+        case "language-tests": return "LANGUAGE_TEST"
+        case "employment": return "DOCUMENT"
+        case "proof-of-funds": return "DOCUMENT"
+        case "ee-profile": return "APPLICATION"
+        case "ita-prep": return "APPLICATION"
+        case "medical": return "MEDICAL"
+        case "police-certificates": return "POLICE_CERTIFICATE"
+        case "final-pr": return "APPLICATION"
+        case "approval": return "APPLICATION"
+        case "landing": return "TRAVEL"
+        default: return "OTHER"
+      }
+    }
+
     let created = 0
     for (const t of TASKS) {
       const stageId = stageMap.get(t.stageCode)
@@ -183,17 +218,29 @@ export async function POST() {
       const metadata: Record<string, unknown> = {}
       if (t.dependsOn) metadata.dependsOn = t.dependsOn
 
-      await prisma.taskInstance.create({
+      const task = await prisma.taskInstance.create({
         data: {
           applicationId: appId,
           stageId,
           title: t.title,
+          taskType: getTaskType(t.stageCode),
           priority: t.priority as "CRITICAL" | "HIGH" | "MEDIUM" | "LOW",
           status: "NOT_STARTED",
-          estimatedTimeMinutes: 30,
+          progress: 0,
           metadata: metadata as Prisma.InputJsonValue,
         },
       })
+
+      const assigneeIds = getAssigneeIds(t.owner)
+      if (assigneeIds.length > 0) {
+        await prisma.taskAssignee.createMany({
+          data: assigneeIds.map(applicantId => ({
+            taskId: task.id,
+            applicantId,
+          })),
+        })
+      }
+
       created++
     }
 
