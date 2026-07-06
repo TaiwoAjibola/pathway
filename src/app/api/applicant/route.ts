@@ -34,3 +34,22 @@ export async function PATCH(req: Request) {
   })
   return NextResponse.json(applicant)
 }
+
+export async function POST(req: Request) {
+  const { appId } = getIds()
+  const body = await req.json()
+  const applicant = await prisma.applicant.create({
+    data: {
+      applicationId: appId,
+      type: body.type || "SPOUSE",
+      isDependent: body.type === "CHILD",
+      firstName: body.firstName,
+      lastName: body.lastName,
+      dateOfBirth: body.dateOfBirth ? new Date(body.dateOfBirth) : null,
+      nationality: body.nationality,
+      countryOfResidence: body.countryOfResidence,
+      maritalStatus: "MARRIED",
+    },
+  })
+  return NextResponse.json(applicant, { status: 201 })
+}

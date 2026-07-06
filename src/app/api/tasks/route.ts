@@ -6,22 +6,56 @@ export async function GET() {
   const { appId } = getIds()
   const tasks = await prisma.taskInstance.findMany({
     where: { applicationId: appId },
-    orderBy: [{ priority: "asc" }, { createdAt: "desc" }],
+    include: { applicant: { select: { id: true, firstName: true, lastName: true, type: true } } },
+    orderBy: [{ dueDate: "asc" }, { priority: "asc" }],
   })
   return NextResponse.json(tasks)
 }
 
-export async function PATCH(req: Request) {
+export async function POST(req: Request) {
+  const { appId } = getIds()
   const body = await req.json()
-  const { id, status } = body
-  if (!id || !status) return NextResponse.json({ error: "id and status required" }, { status: 400 })
-
-  const task = await prisma.taskInstance.update({
-    where: { id },
+  const task = await prisma.taskInstance.create({
     data: {
-      status,
-      completedDate: status === "COMPLETED" ? new Date() : undefined,
+      applicationId: appId,
+      applicantId: body.applicantId || null,
+      templateId: body.templateId || "manual",
+      stageId: body.stageId || "",
+      title: body.title,
+      description: body.description || null,
+      priority: body.priority || "MEDIUM",
+      difficulty: body.difficulty || "MODERATE",
+      estimatedTimeMinutes: body.estimatedTimeMinutes || 30,
+      dueDate: body.dueDate ? new Date(body.dueDate) : null,
+      status: body.status || "NOT_STARTED",
     },
   })
+  return NextResponse.json(task, { status: 201 })
+}
+
+export async function PATCH(req: Request) {
+  const body = await req.json()
+  const { id, ...data } = body
+  if (!id) return NextResponse.json({ error: "id required" }, { status: 400 })
+
+  const updateData: Record<string, unknown> = {}
+  if (data.status) updateData.status = data.status
+  if (data.title) updateData.title = data.title
+  if (data.description !== undefined) updateData.description = data.description
+  if (data.priority) updateData.priority = data.priority
+  if (data.applicantId !== undefined) updateData.applicantId = data.applicantId || null
+  if (data.stageId !== undefined) updateData.stageId = data.stageId
+  if (data.dueDate !== undefined) updateData.dueDate = data.dueDate ? new Date(data.dueDate) : null
+  if (data.status === "COMPLETED") updateData.completedDate = new Date()
+
+  const task = await prisma.taskInstance.update({ where: { id }, data: updateData })
   return NextResponse.json(task)
+}
+
+export async function DELETE(req: Request) {
+  const { searchParams } = new URL(req.url)
+  const id = searchParams.get("id")
+  if (!id) return NextResponse.json({ error: "id required" }, { status: 400 })
+  await prisma.taskInstance.delete({ where: { id } })
+  return NextResponse.json({ success: true })
 }
