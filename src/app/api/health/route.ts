@@ -24,6 +24,6 @@ export async function GET() {
         dbUrlHost: process.env.DATABASE_URL ? new URL(process.env.DATABASE_URL).host : "none",
         nodeEnv: process.env.NODE_ENV,
       },
-    }, { status: 200 })
+    }, { status: 500 })
   }
 }
