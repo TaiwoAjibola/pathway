@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getIds } from "@/lib/data"
+import type { Prisma } from "@prisma/client"
 
 export async function GET() {
   const { appId } = getIds()
@@ -28,6 +29,7 @@ export async function POST(req: Request) {
       estimatedTimeMinutes: body.estimatedTimeMinutes || 30,
       dueDate: body.dueDate ? new Date(body.dueDate) : null,
       status: body.status || "NOT_STARTED",
+      metadata: body.metadata as Prisma.InputJsonValue | undefined,
     },
   })
   return NextResponse.json(task, { status: 201 })
@@ -47,6 +49,7 @@ export async function PATCH(req: Request) {
   if (data.stageId !== undefined) updateData.stageId = data.stageId
   if (data.dueDate !== undefined) updateData.dueDate = data.dueDate ? new Date(data.dueDate) : null
   if (data.status === "COMPLETED") updateData.completedDate = new Date()
+  if (data.metadata !== undefined) updateData.metadata = data.metadata as Prisma.InputJsonValue
 
   const task = await prisma.taskInstance.update({ where: { id }, data: updateData })
   return NextResponse.json(task)
