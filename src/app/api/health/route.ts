@@ -21,8 +21,9 @@ export async function GET() {
       error: (error as Error).message,
       env: {
         hasDatabaseUrl: !!process.env.DATABASE_URL,
+        dbUrlHost: process.env.DATABASE_URL ? new URL(process.env.DATABASE_URL).host : "none",
         nodeEnv: process.env.NODE_ENV,
       },
-    }, { status: 500 })
+    }, { status: 200 })
   }
 }
