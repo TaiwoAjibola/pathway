@@ -132,19 +132,19 @@ INSERT INTO "ApplicationStage" (id, "applicationId", "stageId", status, progress
 SELECT 'as-emp','a000000000000000000001','s-employment','UNLOCKED'::"StageStatus",10,NOW(),NOW()
 WHERE NOT EXISTS (SELECT 1 FROM "ApplicationStage" WHERE id = 'as-emp');
 INSERT INTO "ApplicationStage" (id, "applicationId", "stageId", status, progress, "createdAt", "updatedAt")
-SELECT 'as-pof','a000000000000000000001','s-proof-of-funds','UNLOCKED'::"StageStatus",0,NOW(),NOW()
+SELECT 'as-pof','a000000000000000000001','s-pof','UNLOCKED'::"StageStatus",0,NOW(),NOW()
 WHERE NOT EXISTS (SELECT 1 FROM "ApplicationStage" WHERE id = 'as-pof');
 INSERT INTO "ApplicationStage" (id, "applicationId", "stageId", status, progress, "createdAt", "updatedAt")
 SELECT 'as-ee','a000000000000000000001','s-ee-profile','LOCKED'::"StageStatus",0,NOW(),NOW()
 WHERE NOT EXISTS (SELECT 1 FROM "ApplicationStage" WHERE id = 'as-ee');
 INSERT INTO "ApplicationStage" (id, "applicationId", "stageId", status, progress, "createdAt", "updatedAt")
-SELECT 'as-ita','a000000000000000000001','s-ita-prep','LOCKED'::"StageStatus",0,NOW(),NOW()
+SELECT 'as-ita','a000000000000000000001','s-ita','LOCKED'::"StageStatus",0,NOW(),NOW()
 WHERE NOT EXISTS (SELECT 1 FROM "ApplicationStage" WHERE id = 'as-ita');
 INSERT INTO "ApplicationStage" (id, "applicationId", "stageId", status, progress, "createdAt", "updatedAt")
 SELECT 'as-med','a000000000000000000001','s-medical','LOCKED'::"StageStatus",0,NOW(),NOW()
 WHERE NOT EXISTS (SELECT 1 FROM "ApplicationStage" WHERE id = 'as-med');
 INSERT INTO "ApplicationStage" (id, "applicationId", "stageId", status, progress, "createdAt", "updatedAt")
-SELECT 'as-police','a000000000000000000001','s-police-certificates','LOCKED'::"StageStatus",0,NOW(),NOW()
+SELECT 'as-police','a000000000000000000001','s-police','LOCKED'::"StageStatus",0,NOW(),NOW()
 WHERE NOT EXISTS (SELECT 1 FROM "ApplicationStage" WHERE id = 'as-police');
 INSERT INTO "ApplicationStage" (id, "applicationId", "stageId", status, progress, "createdAt", "updatedAt")
 SELECT 'as-final','a000000000000000000001','s-final-pr','LOCKED'::"StageStatus",0,NOW(),NOW()
