@@ -1,6 +1,7 @@
 -- =============================================================
 -- PATHWAY — Full Setup (Tables + Seed Data)
 -- Run this ONCE in Supabase SQL Editor
+-- v2 — individual inserts for portability
 -- =============================================================
 -- Sign in at /login with:
 --   Email:    admin@pathway.app
