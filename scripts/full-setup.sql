@@ -1,0 +1,106 @@
+-- =============================================================
+-- PATHWAY — Full Setup (Tables + Seed Data)
+-- Run this ONCE in Supabase SQL Editor
+-- =============================================================
+-- Sign in at /login with:
+--   Email:    admin@pathway.app
+--   Password: admin123
+-- =============================================================
+
+-- STEP 1: Create Enums
+CREATE TYPE "Priority" AS ENUM ('CRITICAL', 'HIGH', 'MEDIUM', 'LOW');
+CREATE TYPE "Difficulty" AS ENUM ('EASY', 'MODERATE', 'HARD', 'COMPLEX');
+CREATE TYPE "TaskStatus" AS ENUM ('NOT_STARTED', 'IN_PROGRESS', 'WAITING', 'BLOCKED', 'COMPLETED', 'EXPIRED', 'NEEDS_REVIEW');
+CREATE TYPE "ApplicationStatus" AS ENUM ('PLANNING', 'ELIGIBILITY', 'DOCUMENTS', 'IN_PROGRESS', 'SUBMITTED', 'APPROVED', 'LANDED');
+CREATE TYPE "ApplicantType" AS ENUM ('PRIMARY', 'SPOUSE', 'CHILD');
+CREATE TYPE "MaritalStatus" AS ENUM ('SINGLE', 'MARRIED', 'COMMON_LAW', 'DIVORCED', 'WIDOWED', 'SEPARATED');
+CREATE TYPE "StageStatus" AS ENUM ('LOCKED', 'UNLOCKED', 'IN_PROGRESS', 'COMPLETED');
+CREATE TYPE "DocumentStatus" AS ENUM ('NOT_UPLOADED', 'UPLOADED', 'REVIEWING', 'APPROVED', 'REJECTED', 'EXPIRING_SOON', 'EXPIRED');
+CREATE TYPE "ReviewStatus" AS ENUM ('PENDING', 'APPROVED', 'REJECTED', 'NEEDS_UPDATE');
+CREATE TYPE "TestType" AS ENUM ('IELTS_GENERAL', 'CELPIP', 'TEF', 'TCF');
+CREATE TYPE "BookingStatus" AS ENUM ('NOT_BOOKED', 'BOOKED', 'RESCHEDULED', 'CANCELLED');
+CREATE TYPE "ResultStatus" AS ENUM ('PENDING', 'RECEIVED', 'VALIDATED', 'EXPIRED');
+CREATE TYPE "PreparationStatus" AS ENUM ('NOT_STARTED', 'IN_PROGRESS', 'READY', 'TAKEN');
+CREATE TYPE "MedicalStatus" AS ENUM ('NOT_STARTED', 'SCHEDULED', 'COMPLETED', 'PASSED', 'FAILED');
+CREATE TYPE "EducationLevel" AS ENUM ('HIGH_SCHOOL', 'DIPLOMA', 'BACHELORS', 'MASTERS', 'PHD');
+CREATE TYPE "NotificationType" AS ENUM ('TASK_DUE','TASK_OVERDUE','TASK_UNLOCKED','DOCUMENT_EXPIRING','DOCUMENT_EXPIRED','DRAW_ALERT','ITA_RECEIVED','MILESTONE','STAGNATION','POLICY_CHANGE','AI_RECOMMENDATION','APPOINTMENT_REMINDER');
+CREATE TYPE "NotificationUrgency" AS ENUM ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL');
+
+-- STEP 2: Create Tables
+CREATE TABLE "User" ("id" TEXT PRIMARY KEY, "name" TEXT, "email" TEXT NOT NULL UNIQUE, "emailVerified" TIMESTAMP(3), "image" TEXT, "hashedPassword" TEXT, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL);
+CREATE TABLE "Account" ("id" TEXT PRIMARY KEY, "userId" TEXT NOT NULL REFERENCES "User"(id) ON DELETE CASCADE, "type" TEXT NOT NULL, "provider" TEXT NOT NULL, "providerAccountId" TEXT NOT NULL, "refresh_token" TEXT, "access_token" TEXT, "expires_at" INTEGER, "token_type" TEXT, "scope" TEXT, "id_token" TEXT, "session_state" TEXT, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL, UNIQUE("provider","providerAccountId"));
+CREATE TABLE "Session" ("id" TEXT PRIMARY KEY, "sessionToken" TEXT NOT NULL UNIQUE, "userId" TEXT NOT NULL REFERENCES "User"(id) ON DELETE CASCADE, "expires" TIMESTAMP(3) NOT NULL, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL);
+CREATE TABLE "VerificationToken" ("identifier" TEXT NOT NULL, "token" TEXT NOT NULL UNIQUE, "expires" TIMESTAMP(3) NOT NULL, UNIQUE("identifier","token"));
+CREATE TABLE "Pathway" ("id" TEXT PRIMARY KEY, "code" TEXT NOT NULL UNIQUE, "name" TEXT NOT NULL, "description" TEXT, "country" TEXT NOT NULL, "visaCategory" TEXT NOT NULL, "version" TEXT NOT NULL DEFAULT '1.0.0', "active" BOOLEAN NOT NULL DEFAULT true, "config" JSONB NOT NULL, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL);
+CREATE TABLE "Stage" ("id" TEXT PRIMARY KEY, "pathwayId" TEXT NOT NULL REFERENCES "Pathway"(id) ON DELETE CASCADE, "code" TEXT NOT NULL, "name" TEXT NOT NULL, "description" TEXT, "order" INTEGER NOT NULL, "autoUnlock" BOOLEAN NOT NULL DEFAULT false, "estimatedDurationDays" INTEGER, "config" JSONB, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL, UNIQUE("pathwayId","code"));
+CREATE TABLE "TaskTemplate" ("id" TEXT PRIMARY KEY, "stageId" TEXT NOT NULL REFERENCES "Stage"(id) ON DELETE CASCADE, "code" TEXT NOT NULL, "title" TEXT NOT NULL, "description" TEXT, "reason" TEXT, "priority" "Priority" NOT NULL DEFAULT 'MEDIUM', "difficulty" "Difficulty" NOT NULL DEFAULT 'MODERATE', "estimatedTimeMinutes" INTEGER NOT NULL DEFAULT 30, "autoUnlock" BOOLEAN NOT NULL DEFAULT true, "autoComplete" BOOLEAN NOT NULL DEFAULT false, "completionCriteria" JSONB, "helpfulResources" JSONB, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL, UNIQUE("stageId","code"));
+CREATE TABLE "TaskDependency" ("id" TEXT PRIMARY KEY, "taskId" TEXT NOT NULL REFERENCES "TaskTemplate"(id) ON DELETE CASCADE, "dependsOnId" TEXT NOT NULL REFERENCES "TaskTemplate"(id) ON DELETE CASCADE, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE("taskId","dependsOnId"));
+CREATE TABLE "Application" ("id" TEXT PRIMARY KEY, "userId" TEXT NOT NULL REFERENCES "User"(id) ON DELETE CASCADE, "pathwayId" TEXT NOT NULL REFERENCES "Pathway"(id), "label" TEXT NOT NULL, "status" "ApplicationStatus" NOT NULL DEFAULT 'PLANNING', "currentStageId" TEXT, "crsScore" INTEGER NOT NULL DEFAULT 0, "targetCrsScore" INTEGER NOT NULL DEFAULT 500, "healthScore" INTEGER NOT NULL DEFAULT 100, "readinessScore" INTEGER NOT NULL DEFAULT 0, "estimatedCompletionDate" TIMESTAMP(3), "daysRemaining" INTEGER NOT NULL DEFAULT 0, "journeyVelocity" DOUBLE PRECISION NOT NULL DEFAULT 0, "metadata" JSONB, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL);
+CREATE TABLE "Applicant" ("id" TEXT PRIMARY KEY, "applicationId" TEXT NOT NULL REFERENCES "Application"(id) ON DELETE CASCADE, "type" "ApplicantType" NOT NULL DEFAULT 'PRIMARY', "isDependent" BOOLEAN NOT NULL DEFAULT false, "firstName" TEXT NOT NULL, "lastName" TEXT NOT NULL, "dateOfBirth" TIMESTAMP(3), "nationality" TEXT, "countryOfResidence" TEXT, "maritalStatus" "MaritalStatus" NOT NULL DEFAULT 'SINGLE', "email" TEXT, "phone" TEXT, "metadata" JSONB, "medicalStatus" "MedicalStatus" NOT NULL DEFAULT 'NOT_STARTED', "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL);
+CREATE TABLE "ApplicationStage" ("id" TEXT PRIMARY KEY, "applicationId" TEXT NOT NULL REFERENCES "Application"(id) ON DELETE CASCADE, "stageId" TEXT NOT NULL REFERENCES "Stage"(id), "status" "StageStatus" NOT NULL DEFAULT 'LOCKED', "progress" DOUBLE PRECISION NOT NULL DEFAULT 0, "startedAt" TIMESTAMP(3), "completedAt" TIMESTAMP(3), "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL, UNIQUE("applicationId","stageId"));
+CREATE TABLE "TaskInstance" ("id" TEXT PRIMARY KEY, "applicationId" TEXT NOT NULL REFERENCES "Application"(id) ON DELETE CASCADE, "applicantId" TEXT REFERENCES "Applicant"(id), "templateId" TEXT NOT NULL REFERENCES "TaskTemplate"(id), "stageId" TEXT NOT NULL, "title" TEXT NOT NULL, "description" TEXT, "reason" TEXT, "priority" "Priority" NOT NULL DEFAULT 'MEDIUM', "difficulty" "Difficulty" NOT NULL DEFAULT 'MODERATE', "estimatedTimeMinutes" INTEGER NOT NULL DEFAULT 30, "dueDate" TIMESTAMP(3), "completedDate" TIMESTAMP(3), "status" "TaskStatus" NOT NULL DEFAULT 'NOT_STARTED', "notes" TEXT, "evidence" JSONB, "helpfulResources" JSONB, "aiGuidance" TEXT, "aiRisks" JSONB, "aiRecommendations" JSONB, "metadata" JSONB, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL);
+CREATE TABLE "Document" ("id" TEXT PRIMARY KEY, "applicantId" TEXT NOT NULL REFERENCES "Applicant"(id) ON DELETE CASCADE, "templateId" TEXT, "taskId" TEXT, "name" TEXT NOT NULL, "description" TEXT, "purpose" TEXT, "issuingAuthority" TEXT, "expirationRules" JSONB, "status" "DocumentStatus" NOT NULL DEFAULT 'NOT_UPLOADED', "reviewStatus" "ReviewStatus" NOT NULL DEFAULT 'PENDING', "aiReviewNotes" TEXT, "reviewerNotes" TEXT, "expiryDate" TIMESTAMP(3), "expiryReminderSent" BOOLEAN NOT NULL DEFAULT false, "commonMistakes" JSONB, "tips" JSONB, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL);
+CREATE TABLE "DocumentVersion" ("id" TEXT PRIMARY KEY, "documentId" TEXT NOT NULL REFERENCES "Document"(id) ON DELETE CASCADE, "fileKey" TEXT NOT NULL, "fileName" TEXT NOT NULL, "fileSize" INTEGER NOT NULL, "mimeType" TEXT NOT NULL, "ocrText" TEXT, "aiValidation" JSONB, "notes" TEXT, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE "DocumentTemplate" ("id" TEXT PRIMARY KEY, "pathwayId" TEXT NOT NULL REFERENCES "Pathway"(id) ON DELETE CASCADE, "code" TEXT NOT NULL, "name" TEXT NOT NULL, "category" TEXT NOT NULL, "purpose" TEXT, "issuingAuthority" TEXT, "whenNeeded" TEXT, "expirationRules" JSONB, "acceptedFormats" JSONB, "maxSizeMB" INTEGER NOT NULL DEFAULT 10, "colorRequirement" TEXT NOT NULL DEFAULT 'EITHER', "notarizationRequired" BOOLEAN NOT NULL DEFAULT false, "translationRequired" BOOLEAN NOT NULL DEFAULT false, "sampleUrl" TEXT, "commonMistakes" JSONB, "tips" JSONB, "validationRules" JSONB, "aiValidationPrompt" TEXT, "expiryReminderDays" JSONB, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL, UNIQUE("pathwayId","code"));
+CREATE TABLE "Education" ("id" TEXT PRIMARY KEY, "applicantId" TEXT NOT NULL REFERENCES "Applicant"(id) ON DELETE CASCADE, "level" "EducationLevel" NOT NULL, "field" TEXT, "institution" TEXT, "country" TEXT, "startDate" TIMESTAMP(3), "endDate" TIMESTAMP(3), "earnedDate" TIMESTAMP(3), "status" TEXT, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL);
+CREATE TABLE "Employment" ("id" TEXT PRIMARY KEY, "applicantId" TEXT NOT NULL REFERENCES "Applicant"(id) ON DELETE CASCADE, "company" TEXT NOT NULL, "title" TEXT NOT NULL, "country" TEXT, "startDate" TIMESTAMP(3), "endDate" TIMESTAMP(3), "isCurrent" BOOLEAN NOT NULL DEFAULT false, "hoursPerWeek" INTEGER, "durationYears" DOUBLE PRECISION, "nocCode" TEXT, "isSkilled" BOOLEAN NOT NULL DEFAULT false, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL);
+CREATE TABLE "LanguageTest" ("id" TEXT PRIMARY KEY, "applicantId" TEXT NOT NULL REFERENCES "Applicant"(id) ON DELETE CASCADE, "testType" "TestType" NOT NULL, "language" TEXT NOT NULL, "bookingStatus" "BookingStatus" NOT NULL DEFAULT 'NOT_BOOKED', "testCenter" TEXT, "testDate" TIMESTAMP(3), "bookingReference" TEXT, "resultStatus" "ResultStatus" NOT NULL DEFAULT 'PENDING', "listeningScore" DOUBLE PRECISION, "readingScore" DOUBLE PRECISION, "writingScore" DOUBLE PRECISION, "speakingScore" DOUBLE PRECISION, "overallScore" DOUBLE PRECISION, "clbListening" INTEGER, "clbReading" INTEGER, "clbWriting" INTEGER, "clbSpeaking" INTEGER, "nclcLevel" INTEGER, "testReportUrl" TEXT, "expiryDate" TIMESTAMP(3), "studyStreak" INTEGER NOT NULL DEFAULT 0, "lastStudyDate" TIMESTAMP(3), "preparationStatus" "PreparationStatus" NOT NULL DEFAULT 'NOT_STARTED', "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL);
+CREATE TABLE "ImmigrationRecord" ("id" TEXT PRIMARY KEY, "applicantId" TEXT NOT NULL REFERENCES "Applicant"(id) ON DELETE CASCADE, "country" TEXT NOT NULL, "visaType" TEXT, "entryDate" TIMESTAMP(3), "exitDate" TIMESTAMP(3), "status" TEXT, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL);
+CREATE TABLE "CredentialAssessment" ("id" TEXT PRIMARY KEY, "applicantId" TEXT NOT NULL REFERENCES "Applicant"(id) ON DELETE CASCADE, "organization" TEXT NOT NULL, "status" TEXT NOT NULL DEFAULT 'NOT_STARTED', "submittedDate" TIMESTAMP(3), "receivedDate" TIMESTAMP(3), "equivalency" TEXT, "reportUrl" TEXT, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL);
+CREATE TABLE "PoliceCertificate" ("id" TEXT PRIMARY KEY, "applicantId" TEXT NOT NULL REFERENCES "Applicant"(id) ON DELETE CASCADE, "country" TEXT NOT NULL, "status" TEXT NOT NULL DEFAULT 'NOT_STARTED', "appliedDate" TIMESTAMP(3), "receivedDate" TIMESTAMP(3), "expiryDate" TIMESTAMP(3), "documentUrl" TEXT, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL);
+CREATE TABLE "ProofOfFunds" ("id" TEXT PRIMARY KEY, "applicantId" TEXT NOT NULL UNIQUE REFERENCES "Applicant"(id) ON DELETE CASCADE, "currency" TEXT NOT NULL DEFAULT 'CAD', "amount" DOUBLE PRECISION, "lastUpdated" TIMESTAMP(3), "documents" JSONB, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL);
+CREATE TABLE "CRSSnapshot" ("id" TEXT PRIMARY KEY, "applicationId" TEXT NOT NULL REFERENCES "Application"(id) ON DELETE CASCADE, "totalScore" INTEGER NOT NULL, "ageScore" INTEGER NOT NULL DEFAULT 0, "educationScore" INTEGER NOT NULL DEFAULT 0, "languageScore" INTEGER NOT NULL DEFAULT 0, "secondLanguageScore" INTEGER NOT NULL DEFAULT 0, "workExperienceScore" INTEGER NOT NULL DEFAULT 0, "skillsTransferScore" INTEGER NOT NULL DEFAULT 0, "additionalScore" INTEGER NOT NULL DEFAULT 0, "breakdown" JSONB, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE "Notification" ("id" TEXT PRIMARY KEY, "applicationId" TEXT NOT NULL REFERENCES "Application"(id) ON DELETE CASCADE, "type" "NotificationType" NOT NULL, "title" TEXT NOT NULL, "message" TEXT NOT NULL, "urgency" "NotificationUrgency" NOT NULL DEFAULT 'MEDIUM', "link" TEXT, "read" BOOLEAN NOT NULL DEFAULT false, "dismissed" BOOLEAN NOT NULL DEFAULT false, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL);
+
+-- STEP 3: Seed Data
+INSERT INTO "User" (id, email, name, "hashedPassword", "createdAt", "updatedAt")
+SELECT 'u00000000000000000000001', 'admin@pathway.app', 'Admin User', '$2b$12$PGNLED2/NFP6yj1nJ8yY5uebGKnS/A0NnlONLazxDGleNZNICLwDK', NOW(), NOW()
+WHERE NOT EXISTS (SELECT 1 FROM "User" WHERE email = 'admin@pathway.app');
+
+INSERT INTO "Pathway" (id, code, name, description, country, "visaCategory", version, active, config, "createdAt", "updatedAt")
+SELECT 'p00000000000000000000001', 'express-entry-fsw', 'Canada PR — Express Entry (FSW)', 'Federal Skilled Worker program for Canada Permanent Residence', 'Canada', 'Permanent Residence', '1.0.0', true, '{"eligibilityType":"fsw_67_points","minimumPoints":67,"drawCutoffs":[473,471,475,472,470]}', NOW(), NOW()
+WHERE NOT EXISTS (SELECT 1 FROM "Pathway" WHERE code = 'express-entry-fsw');
+
+INSERT INTO "Stage" (id, "pathwayId", code, name, description, "order", "autoUnlock", "estimatedDurationDays", "createdAt", "updatedAt")
+SELECT * FROM (VALUES
+  ('s-planning','p00000000000000000000001','planning','Planning','Assess your pathway and set goals',1,true,3,NOW(),NOW()),
+  ('s-eligibility','p00000000000000000000001','eligibility','Eligibility','Check FSW 67 points and CRS',2,true,7,NOW(),NOW()),
+  ('s-documents','p00000000000000000000001','documents','Document Gathering','Collect all required documents',3,true,14,NOW(),NOW()),
+  ('s-credential','p00000000000000000000001','credential-assessment','Credential Assessment','Get ECA from designated org',4,false,60,NOW(),NOW()),
+  ('s-language','p00000000000000000000001','language-tests','Language Tests','Take IELTS/CELPIP/TEF',5,true,45,NOW(),NOW()),
+  ('s-employment','p00000000000000000000001','employment','Employment Verification','Collect reference letters',6,true,30,NOW(),NOW()),
+  ('s-pof','p00000000000000000000001','proof-of-funds','Proof of Funds','Show settlement funds',7,true,14,NOW(),NOW()),
+  ('s-ee-profile','p00000000000000000000001','ee-profile','Express Entry Profile','Create and submit EE profile',8,false,3,NOW(),NOW()),
+  ('s-ita','p00000000000000000000001','ita-prep','ITA Preparation','Prepare documents for ITA',9,false,30,NOW(),NOW()),
+  ('s-medical','p00000000000000000000001','medical','Medical Exam','Complete immigration medical',10,true,30,NOW(),NOW()),
+  ('s-police','p00000000000000000000001','police-certificates','Police Certificates','Obtain PCC from all countries',11,false,60,NOW(),NOW()),
+  ('s-final-pr','p00000000000000000000001','final-pr','Final PR Application','Submit e-APR',12,false,14,NOW(),NOW()),
+  ('s-approval','p00000000000000000000001','approval','Approval & COPR','Wait for PPR and COPR',13,false,180,NOW(),NOW()),
+  ('s-landing','p00000000000000000000001','landing','Landing in Canada','Prepare for landing',14,false,90,NOW(),NOW())
+) AS v WHERE NOT EXISTS (SELECT 1 FROM "Stage" WHERE code = v.code);
+
+INSERT INTO "Application" (id, "userId", "pathwayId", label, status, "currentStageId", "crsScore", "targetCrsScore", "healthScore", "readinessScore", "createdAt", "updatedAt")
+SELECT 'a000000000000000000001','u00000000000000000000001','p00000000000000000000001','Canada PR — Express Entry','IN_PROGRESS','s-credential',456,470,84,68,NOW(),NOW()
+WHERE NOT EXISTS (SELECT 1 FROM "Application" WHERE id = 'a000000000000000000001');
+
+INSERT INTO "Applicant" (id, "applicationId", type, "isDependent", "firstName", "lastName", "dateOfBirth", nationality, "countryOfResidence", "maritalStatus", "medicalStatus", "createdAt", "updatedAt")
+SELECT 'ap00000000000000000001','a000000000000000000001','PRIMARY',false,'John','Doe','1997-01-15','Nigeria','Nigeria','MARRIED','NOT_STARTED',NOW(),NOW()
+WHERE NOT EXISTS (SELECT 1 FROM "Applicant" WHERE id = 'ap00000000000000000001');
+
+INSERT INTO "ApplicationStage" (id, "applicationId", "stageId", status, progress, "createdAt", "updatedAt")
+SELECT * FROM (VALUES
+  ('as-planning','a000000000000000000001','s-planning','COMPLETED',100,NOW(),NOW()),
+  ('as-elig','a000000000000000000001','s-eligibility','COMPLETED',100,NOW(),NOW()),
+  ('as-docs','a000000000000000000001','s-documents','COMPLETED',100,NOW(),NOW()),
+  ('as-cred','a000000000000000000001','s-credential','IN_PROGRESS',40,NOW(),NOW()),
+  ('as-lang','a000000000000000000001','s-language','IN_PROGRESS',25,NOW(),NOW()),
+  ('as-emp','a000000000000000000001','s-employment','UNLOCKED',10,NOW(),NOW()),
+  ('as-pof','a000000000000000000001','s-proof-of-funds','UNLOCKED',0,NOW(),NOW()),
+  ('as-ee','a000000000000000000001','s-ee-profile','LOCKED',0,NOW(),NOW()),
+  ('as-ita','a000000000000000000001','s-ita-prep','LOCKED',0,NOW(),NOW()),
+  ('as-med','a000000000000000000001','s-medical','LOCKED',0,NOW(),NOW()),
+  ('as-police','a000000000000000000001','s-police-certificates','LOCKED',0,NOW(),NOW()),
+  ('as-final','a000000000000000000001','s-final-pr','LOCKED',0,NOW(),NOW()),
+  ('as-approval','a000000000000000000001','s-approval','LOCKED',0,NOW(),NOW()),
+  ('as-landing','a000000000000000000001','s-landing','LOCKED',0,NOW(),NOW())
+) AS v WHERE NOT EXISTS (SELECT 1 FROM "ApplicationStage" WHERE id = v.id);
