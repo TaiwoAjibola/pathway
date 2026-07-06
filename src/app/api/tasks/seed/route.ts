@@ -159,7 +159,7 @@ const TASKS = [
 
 export async function POST() {
   try {
-    const { appId } = getIds()
+    const { appId } = await getIds()
 
     const existing = await prisma.taskInstance.count({ where: { applicationId: appId } })
     if (existing > 0) {
@@ -207,7 +207,7 @@ export async function POST() {
 
 export async function DELETE() {
   try {
-    const { appId } = getIds()
+    const { appId } = await getIds()
     const result = await prisma.taskInstance.deleteMany({
       where: { applicationId: appId, templateId: "template" },
     })

@@ -1,16 +1,27 @@
 import { prisma } from "./prisma"
 
-const APP_ID = "a000000000000000000001"
-const USER_ID = "u00000000000000000000001"
-const APPLICANT_ID = "ap00000000000000000001"
+async function resolveIds() {
+  const [user, app, applicant] = await Promise.all([
+    prisma.user.findFirst({ orderBy: { createdAt: "asc" } }),
+    prisma.application.findFirst({ orderBy: { createdAt: "asc" } }),
+    prisma.applicant.findFirst({ orderBy: { createdAt: "asc" } }),
+  ])
+  return {
+    userId: user?.id ?? "",
+    appId: app?.id ?? "",
+    applicantId: applicant?.id ?? "",
+  }
+}
 
-export function getIds() {
-  return { appId: APP_ID, userId: USER_ID, applicantId: APPLICANT_ID }
+export async function getIds() {
+  return resolveIds()
 }
 
 export async function getApplication() {
+  const { appId } = await resolveIds()
+  if (!appId) return null
   return prisma.application.findUnique({
-    where: { id: APP_ID },
+    where: { id: appId },
     include: {
       pathway: true,
       applicants: true,
@@ -30,8 +41,10 @@ export async function getApplication() {
 }
 
 export async function getApplicant() {
+  const { applicantId } = await resolveIds()
+  if (!applicantId) return null
   return prisma.applicant.findUnique({
-    where: { id: APPLICANT_ID },
+    where: { id: applicantId },
     include: {
       educationEntries: true,
       employmentEntries: true,
@@ -42,28 +55,36 @@ export async function getApplicant() {
 }
 
 export async function getLanguageTests() {
+  const { applicantId } = await resolveIds()
+  if (!applicantId) return []
   return prisma.languageTest.findMany({
-    where: { applicantId: APPLICANT_ID },
+    where: { applicantId },
     orderBy: { createdAt: "desc" },
   })
 }
 
 export async function getDocuments() {
+  const { applicantId } = await resolveIds()
+  if (!applicantId) return []
   return prisma.document.findMany({
-    where: { applicantId: APPLICANT_ID },
+    where: { applicantId },
     orderBy: { createdAt: "desc" },
   })
 }
 
 export async function getTasks() {
+  const { appId } = await resolveIds()
+  if (!appId) return []
   return prisma.taskInstance.findMany({
-    where: { applicationId: APP_ID },
+    where: { applicationId: appId },
     orderBy: [{ priority: "asc" }, { createdAt: "desc" }],
   })
 }
 
 export async function getUser() {
+  const { userId } = await resolveIds()
+  if (!userId) return null
   return prisma.user.findUnique({
-    where: { id: USER_ID },
+    where: { id: userId },
   })
 }

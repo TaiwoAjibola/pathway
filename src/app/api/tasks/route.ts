@@ -5,7 +5,7 @@ import type { Prisma } from "@prisma/client"
 
 export async function GET() {
   try {
-    const { appId } = getIds()
+    const { appId } = await getIds()
     const tasks = await prisma.taskInstance.findMany({
       where: { applicationId: appId },
       include: { applicant: { select: { id: true, firstName: true, lastName: true, type: true } } },
@@ -20,7 +20,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const { appId } = getIds()
+    const { appId } = await getIds()
     const body = await req.json()
     const task = await prisma.taskInstance.create({
       data: {

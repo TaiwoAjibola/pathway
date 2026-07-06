@@ -5,7 +5,7 @@ import { getIds } from "@/lib/data"
 export async function POST(req: Request) {
   try {
     const body = await req.json()
-    const { appId } = getIds()
+    const { appId } = await getIds()
     const snapshot = await prisma.cRSSnapshot.create({
       data: {
         applicationId: appId,

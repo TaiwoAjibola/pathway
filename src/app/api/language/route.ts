@@ -4,7 +4,7 @@ import { getIds } from "@/lib/data"
 
 export async function GET() {
   try {
-    const { applicantId } = getIds()
+    const { applicantId } = await getIds()
     const tests = await prisma.languageTest.findMany({
       where: { applicantId },
       orderBy: { createdAt: "desc" },
@@ -19,7 +19,7 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const body = await req.json()
-    const { applicantId } = getIds()
+    const { applicantId } = await getIds()
     const test = await prisma.languageTest.create({
       data: {
         applicantId,

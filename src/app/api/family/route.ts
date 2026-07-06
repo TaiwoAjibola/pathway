@@ -4,7 +4,7 @@ import { getIds } from "@/lib/data"
 
 export async function GET() {
   try {
-    const { appId } = getIds()
+    const { appId } = await getIds()
     const all = await prisma.applicant.findMany({
       where: { applicationId: appId },
       orderBy: { createdAt: "asc" },

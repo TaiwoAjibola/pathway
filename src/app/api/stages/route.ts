@@ -4,7 +4,7 @@ import { getIds } from "@/lib/data"
 
 export async function GET() {
   try {
-    const { appId } = getIds()
+    const { appId } = await getIds()
     const stages = await prisma.applicationStage.findMany({
       where: { applicationId: appId },
       include: { stage: true },
