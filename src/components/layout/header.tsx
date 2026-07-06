@@ -1,8 +1,6 @@
 "use client"
 
-import { Bell, Search, LogOut } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { signOut } from "next-auth/react"
+import { Bell, Search } from "lucide-react"
 
 export function Header() {
   return (
@@ -19,10 +17,6 @@ export function Header() {
         <Bell className="h-5 w-5" />
         <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500" />
       </button>
-      <Button variant="ghost" size="sm" onClick={() => signOut()}>
-        <LogOut className="h-4 w-4" />
-        <span className="hidden sm:inline">Sign Out</span>
-      </Button>
     </header>
   )
 }
