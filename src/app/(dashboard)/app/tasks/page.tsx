@@ -208,9 +208,14 @@ export default function TasksPage() {
   const pending = tasks.filter(t => ["NOT_STARTED", "WAITING"].includes(t.status)).length
 
   const groups = stages.flatMap(s => s.groups || [])
-  const groupedStages = stages
-    .map(s => ({ stage: s.stage, tasks: filtered.filter(t => t.stageId === s.id) }))
-    .filter(g => g.tasks.length > 0)
+  const stageIdMap = new Map(stages.map(s => [s.id, s]))
+  const groupedStages = stages.length > 0
+    ? stages
+        .map(s => ({ stage: s.stage, tasks: filtered.filter(t => t.stageId === s.id) }))
+        .filter(g => g.tasks.length > 0)
+    : filtered.length > 0
+      ? [{ stage: { id: "", name: "All Tasks", code: "", order: 0 }, tasks: filtered }]
+      : []
 
   if (loading) {
     return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-blue-500" /></div>
@@ -309,7 +314,7 @@ export default function TasksPage() {
                       </div>
                       <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 flex-wrap">
                         {task.assignees.length > 0 && (
-                          <span>{task.assignees.map(a => a.applicant.firstName).join(", ")}</span>
+                          <span>{task.assignees.map(a => a.applicant?.firstName || "").filter(Boolean).join(", ")}</span>
                         )}
                         {task.group && <Badge variant="outline">{task.group.name}</Badge>}
                         {task.dueDate && <span>Due {new Date(task.dueDate).toLocaleDateString()}</span>}

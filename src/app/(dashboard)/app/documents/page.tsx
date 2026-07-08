@@ -103,7 +103,7 @@ export default function DocumentsPage() {
       id: t.id,
       name: t.title,
       description: t.description,
-      assignedTo: t.assignees.map((a) => a.applicant.firstName).join(", ") || "Unassigned",
+      assignedTo: t.assignees.map((a) => a.applicant?.firstName || "").filter(Boolean).join(", ") || "Unassigned",
       collected: t.status !== "NOT_STARTED",
       uploaded: ["IN_PROGRESS", "WAITING", "BLOCKED", "COMPLETED"].includes(t.status),
       verified: t.status === "COMPLETED",

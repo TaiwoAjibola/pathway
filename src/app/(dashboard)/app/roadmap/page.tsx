@@ -386,7 +386,7 @@ export default function RoadmapPage() {
                                   </div>
                                   <div className="flex items-center gap-2 mt-0.5 text-xs text-gray-400">
                                     {t.assignees.length > 0 && (
-                                      <span>{t.assignees.map(a => a.applicant.firstName).join(", ")}</span>
+                                      <span>{t.assignees.map(a => a.applicant?.firstName || "").filter(Boolean).join(", ")}</span>
                                     )}
                                     {t.dueDate && <span>Due {new Date(t.dueDate).toLocaleDateString()}</span>}
                                     {t.plannedDate && <span>Plan {new Date(t.plannedDate).toLocaleDateString()}</span>}
