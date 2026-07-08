@@ -48,7 +48,7 @@ export default function LanguagePage() {
   const [form, setForm] = useState(emptyForm)
 
   const fetchTests = () => {
-    fetch("/api/language").then(r => r.json()).then(setTests).catch(console.error).finally(() => setLoading(false))
+    fetch("/api/language").then(r => r.json()).then(d => setTests(Array.isArray(d) ? d : [])).catch(console.error).finally(() => setLoading(false))
   }
 
   useEffect(fetchTests, [])

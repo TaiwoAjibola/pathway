@@ -17,9 +17,10 @@ export default function ApplicantsPage() {
   const [editForm, setEditForm] = useState<Record<string, string>>({})
 
   const load = () => {
-    fetch("/api/family").then((r) => r.json()).then((d) => {
-      setApplicants(d)
-      if (d.length > 0 && !selectedId) setSelectedId(d[0].id as string)
+    fetch("/api/applicants").then(r => r.json()).then(d => {
+      const data = Array.isArray(d) ? d : []
+      setApplicants(data)
+      if (data.length > 0 && !selectedId) setSelectedId(data[0].id as string)
     }).catch(console.error).finally(() => setLoading(false))
   }
 

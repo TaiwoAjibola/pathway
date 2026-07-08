@@ -71,11 +71,13 @@ export default function RoadmapPage() {
 
   const load = useCallback(() => {
     setLoading(true)
-    Promise.all([
-      fetch("/api/stages").then(r => r.json()),
-      fetch("/api/applicants").then(r => r.json()),
-    ])
-      .then(([s, a]) => { setStages(s); setApplicants(a) })
+    fetch("/api/stages?include=tasks")
+      .then(r => r.json())
+      .then(d => {
+        const data = d && typeof d === "object" && !Array.isArray(d) ? d : {}
+        setStages(Array.isArray(data.stages) ? data.stages : [])
+        setApplicants(Array.isArray(data.applicants) ? data.applicants : [])
+      })
       .catch(console.error)
       .finally(() => setLoading(false))
   }, [])

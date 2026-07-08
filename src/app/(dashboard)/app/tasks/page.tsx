@@ -108,7 +108,7 @@ export default function TasksPage() {
       fetch("/api/stages").then(r => r.json()),
       fetch("/api/applicants").then(r => r.json()),
     ])
-      .then(([t, s, a]) => { setTasks(t); setStages(s); setApplicants(a) })
+      .then(([t, s, a]) => { setTasks(Array.isArray(t) ? t : []); setStages(Array.isArray(s) ? s : []); setApplicants(Array.isArray(a) ? a : []) })
       .catch(console.error)
       .finally(() => setLoading(false))
   }, [])

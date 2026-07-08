@@ -34,7 +34,7 @@ export default function SettingsPage() {
     try {
       const res = await fetch("/api/family")
       const data = await res.json()
-      setFamilyMembers(data)
+      setFamilyMembers(Array.isArray(data) ? data : [])
     } catch {
       // ignore
     }

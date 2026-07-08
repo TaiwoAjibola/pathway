@@ -65,8 +65,10 @@ export default function DocumentsPage() {
       fetch("/api/documents").then((r) => r.json()),
     ])
       .then(([tasks, docs]) => {
-        setTaskDocs(tasks.filter((t: TaskDocument) => t.taskType === "DOCUMENT"))
-        setAppDocs(docs)
+        const t = Array.isArray(tasks) ? tasks : []
+        const d = Array.isArray(docs) ? docs : []
+        setTaskDocs(t.filter((t: TaskDocument) => t.taskType === "DOCUMENT"))
+        setAppDocs(d)
       })
       .catch(console.error)
       .finally(() => setLoading(false))

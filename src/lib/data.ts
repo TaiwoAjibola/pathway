@@ -20,24 +20,19 @@ export async function getIds() {
 export async function getApplication() {
   const { appId } = await getIds()
   if (!appId) return null
-  return prisma.application.findUnique({
-    where: { id: appId },
-    include: {
-      pathway: true,
-      applicants: true,
-      stageProgress: {
-        include: { stage: true, groups: true },
-        orderBy: { stage: { order: "asc" } },
-      },
-      taskInstances: {
-        include: {
-          assignees: { include: { applicant: true } },
-          documents: true,
-        },
-        orderBy: { order: "asc" },
-      },
-    },
-  })
+  const [app, stageProgress] = await Promise.all([
+    prisma.application.findUnique({
+      where: { id: appId },
+      include: { pathway: true, applicants: true },
+    }),
+    prisma.applicationStage.findMany({
+      where: { applicationId: appId },
+      include: { stage: { select: { id: true, code: true, name: true, order: true } } },
+      orderBy: { stage: { order: "asc" } },
+    }),
+  ])
+  if (!app) return null
+  return { ...app, stageProgress, taskInstances: [] }
 }
 
 export async function getApplicant() {
