@@ -208,11 +208,11 @@ export default function TasksPage() {
   const pending = tasks.filter(t => ["NOT_STARTED", "WAITING"].includes(t.status)).length
 
   const groups = stages.flatMap(s => s.groups || [])
-  const stageIdMap = new Map(stages.map(s => [s.id, s]))
-  const groupedStages = stages.length > 0
-    ? stages
-        .map(s => ({ stage: s.stage, tasks: filtered.filter(t => t.stageId === s.id) }))
-        .filter(g => g.tasks.length > 0)
+  const stageGrouped = stages
+    .map(s => ({ stage: s.stage, tasks: filtered.filter(t => t.stageId === s.id) }))
+    .filter(g => g.tasks.length > 0)
+  const groupedStages = stageGrouped.length > 0
+    ? stageGrouped
     : filtered.length > 0
       ? [{ stage: { id: "", name: "All Tasks", code: "", order: 0 }, tasks: filtered }]
       : []
@@ -229,11 +229,9 @@ export default function TasksPage() {
           <p className="mt-1 text-sm text-gray-500">{tasks.length} tasks &middot; {completed} completed</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {tasks.length === 0 && (
-            <Button onClick={seedTasks} loading={seeding} variant="secondary">
-              <Download className="h-4 w-4" /> Load Template
-            </Button>
-          )}
+          <Button onClick={seedTasks} loading={seeding} variant="secondary">
+            <Download className="h-4 w-4" /> Load Template
+          </Button>
           <Button onClick={openCreate}><Plus className="h-4 w-4" /> Add Task</Button>
         </div>
       </div>
