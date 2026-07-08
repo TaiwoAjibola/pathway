@@ -234,8 +234,9 @@ export default function RoadmapPage() {
       <div className="space-y-4">
         {stages.map((s, idx) => {
           const isExpanded = expandedStages.has(s.id)
-          const totalTasks = s.groups.reduce((sum, g) => sum + g.tasks.length, 0)
-          const doneTasks = s.groups.reduce((sum, g) => sum + g.tasks.filter(t => t.status === "COMPLETED").length, 0)
+          const grps = s.groups || []
+          const totalTasks = grps.reduce((sum, g) => sum + g.tasks.length, 0)
+          const doneTasks = grps.reduce((sum, g) => sum + g.tasks.filter(t => t.status === "COMPLETED").length, 0)
           const stageDone = doneTasks / Math.max(totalTasks, 1)
 
           return (
@@ -323,13 +324,13 @@ export default function RoadmapPage() {
               {/* Stage Content (Groups & Tasks) */}
               {isExpanded && (
                 <div className="mt-4 space-y-3">
-                  {s.groups.length === 0 && !addingGroup && (
+                  {grps.length === 0 && !addingGroup && (
                     <p className="text-sm text-gray-400 text-center py-4">
                       No task groups yet. Create one to organize your tasks.
                     </p>
                   )}
 
-                  {s.groups.map(g => {
+                  {grps.map(g => {
                     const isGroupExpanded = expandedGroups.has(g.id)
                     const gp = groupProgress(g.tasks)
                     return (

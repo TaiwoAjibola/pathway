@@ -37,11 +37,15 @@ export default function TimelinePage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch("/api/stages")
+    fetch("/api/stages?include=tasks")
       .then(r => r.json())
       .then(data => {
-        if (data.error) { setError(data.error); return }
-        setStages(Array.isArray(data) ? data : [])
+        if (data?.error) { setError(data.error); return }
+        if (data && typeof data === "object" && !Array.isArray(data)) {
+          setStages(Array.isArray(data.stages) ? data.stages : [])
+        } else {
+          setStages(Array.isArray(data) ? data : [])
+        }
       })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))
@@ -55,7 +59,7 @@ export default function TimelinePage() {
     return <div className="flex items-center justify-center h-64"><p className="text-red-500">{error}</p></div>
   }
 
-  const allTasks = stages.flatMap(s => s.groups.flatMap(g => g.tasks))
+  const allTasks = stages.flatMap(s => (s.groups || []).flatMap(g => g.tasks))
   const totalTasks = allTasks.length
   const completedTasks = allTasks.filter(t => t.status === "COMPLETED").length
   const inProgressTasks = allTasks.filter(t => t.status === "IN_PROGRESS").length
@@ -100,7 +104,7 @@ export default function TimelinePage() {
         {stages.map((s, idx) => {
           const isCurrent = s.id === currentStage?.id
           const isLast = idx === stages.length - 1
-          const stageTasks = s.groups.flatMap(g => g.tasks)
+          const stageTasks = (s.groups || []).flatMap(g => g.tasks)
           const stageDone = stageTasks.filter(t => t.status === "COMPLETED").length
 
           return (
@@ -174,9 +178,9 @@ export default function TimelinePage() {
                 )}
 
                 {/* Groups */}
-                {s.groups.length > 0 && (
+                {(s.groups || []).length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1.5">
-                    {s.groups.map(g => (
+                    {(s.groups || []).map(g => (
                       <Badge key={g.id} variant="outline" className="text-[10px]">
                         {g.name} ({g.tasks.filter(t => t.status === "COMPLETED").length}/{g.tasks.length})
                       </Badge>
