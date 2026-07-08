@@ -73,7 +73,7 @@ export default function RoadmapPage() {
     setLoading(true)
     Promise.all([
       fetch("/api/stages").then(r => r.json()),
-      fetch("/api/family").then(r => r.json()),
+      fetch("/api/applicants").then(r => r.json()),
     ])
       .then(([s, a]) => { setStages(s); setApplicants(a) })
       .catch(console.error)

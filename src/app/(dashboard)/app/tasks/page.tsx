@@ -106,7 +106,7 @@ export default function TasksPage() {
     Promise.all([
       fetch("/api/tasks").then(r => r.json()),
       fetch("/api/stages").then(r => r.json()),
-      fetch("/api/family").then(r => r.json()),
+      fetch("/api/applicants").then(r => r.json()),
     ])
       .then(([t, s, a]) => { setTasks(t); setStages(s); setApplicants(a) })
       .catch(console.error)
