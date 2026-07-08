@@ -3,13 +3,28 @@ import { prisma } from "@/lib/prisma"
 import { getIds } from "@/lib/data"
 import type { Prisma } from "@prisma/client"
 
+const taskInclude = {
+  assignees: { include: { applicant: { select: { id: true, firstName: true, lastName: true, type: true } } } },
+  group: { select: { id: true, name: true } },
+  dependencies: {
+    include: {
+      dependsOn: { select: { id: true, title: true, status: true } },
+    },
+  },
+  dependedBy: {
+    include: {
+      task: { select: { id: true, title: true, status: true } },
+    },
+  },
+} as const
+
 export async function GET() {
   try {
     const { appId } = await getIds()
     const tasks = await prisma.taskInstance.findMany({
       where: { applicationId: appId },
-      include: { assignees: { include: { applicant: { select: { id: true, firstName: true, lastName: true, type: true } } } } },
-      orderBy: [{ dueDate: "asc" }, { priority: "asc" }],
+      include: taskInclude,
+      orderBy: [{ order: "asc" }, { dueDate: "asc" }, { priority: "asc" }],
     })
     return NextResponse.json(tasks)
   } catch (error) {
@@ -26,14 +41,19 @@ export async function POST(req: Request) {
       data: {
         applicationId: appId,
         stageId: body.stageId || "",
+        groupId: body.groupId || null,
         title: body.title,
         taskType: body.taskType || "OTHER",
         category: body.category || null,
         description: body.description || null,
         priority: body.priority || "MEDIUM",
-        progress: body.progress ?? 0,
+        order: body.order ?? 0,
         dueDate: body.dueDate ? new Date(body.dueDate) : null,
+        plannedDate: body.plannedDate ? new Date(body.plannedDate) : null,
+        plannedTime: body.plannedTime || null,
+        deadline: body.deadline ? new Date(body.deadline) : null,
         status: body.status || "NOT_STARTED",
+        progress: body.progress ?? 0,
         estimatedCost: body.estimatedCost ? parseFloat(body.estimatedCost) : null,
         actualCost: body.actualCost ? parseFloat(body.actualCost) : null,
         currency: body.currency || "CAD",
@@ -55,9 +75,18 @@ export async function POST(req: Request) {
       })
     }
 
+    if (body.dependencyIds?.length > 0) {
+      await prisma.taskDependency.createMany({
+        data: body.dependencyIds.map((dependsOnId: string) => ({
+          taskId: task.id,
+          dependsOnId,
+        })),
+      })
+    }
+
     const created = await prisma.taskInstance.findUnique({
       where: { id: task.id },
-      include: { assignees: { include: { applicant: true } } },
+      include: taskInclude,
     })
     return NextResponse.json(created, { status: 201 })
   } catch (error) {
@@ -80,7 +109,12 @@ export async function PATCH(req: Request) {
     if (data.taskType) updateData.taskType = data.taskType
     if (data.category !== undefined) updateData.category = data.category
     if (data.stageId !== undefined) updateData.stageId = data.stageId
+    if (data.groupId !== undefined) updateData.groupId = data.groupId || null
+    if (data.order !== undefined) updateData.order = data.order
     if (data.dueDate !== undefined) updateData.dueDate = data.dueDate ? new Date(data.dueDate) : null
+    if (data.plannedDate !== undefined) updateData.plannedDate = data.plannedDate ? new Date(data.plannedDate) : null
+    if (data.plannedTime !== undefined) updateData.plannedTime = data.plannedTime || null
+    if (data.deadline !== undefined) updateData.deadline = data.deadline ? new Date(data.deadline) : null
     if (data.status === "COMPLETED") updateData.completedDate = new Date()
     if (data.progress !== undefined) updateData.progress = data.progress
     if (data.estimatedCost !== undefined) updateData.estimatedCost = data.estimatedCost
@@ -105,9 +139,18 @@ export async function PATCH(req: Request) {
       }
     }
 
+    if (data.dependencyIds) {
+      await prisma.taskDependency.deleteMany({ where: { taskId: id } })
+      if (data.dependencyIds.length > 0) {
+        await prisma.taskDependency.createMany({
+          data: data.dependencyIds.map((dependsOnId: string) => ({ taskId: id, dependsOnId })),
+        })
+      }
+    }
+
     const updated = await prisma.taskInstance.findUnique({
       where: { id },
-      include: { assignees: { include: { applicant: true } } },
+      include: taskInclude,
     })
     return NextResponse.json(updated)
   } catch (error) {

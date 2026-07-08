@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import {
   CalendarDays, CheckCircle2, Clock, Loader2,
   User, Baby, Heart, DollarSign, TrendingDown, CircleDot,
+  Map, ArrowRight, FileText,
 } from "lucide-react"
 
 type Applicant = { id: string; firstName: string; lastName: string; type: string }
@@ -20,6 +21,9 @@ type StageProgress = {
   progress: number
   startedAt: string | null
   completedAt: string | null
+  startDate: string | null
+  endDate: string | null
+  duration: number | null
   stage: { id: string; code: string; name: string; order: number }
 }
 
@@ -29,6 +33,7 @@ type TaskData = {
   status: string
   priority: string
   dueDate: string | null
+  completedDate: string | null
   taskType: string
   category: string | null
   estimatedCost: number | null
@@ -42,9 +47,6 @@ type AppData = {
   id: string
   label: string
   status: string
-  crsScore: number
-  targetCrsScore: number
-  createdAt: string
   estimatedCompletionDate: string | null
   pathway: { name: string; visaCategory: string }
   applicants: Applicant[]
@@ -61,109 +63,84 @@ export function DashboardClient({ userName }: DashboardClientProps) {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/application").then((r) => r.json()),
-      fetch("/api/tasks").then((r) => r.json()),
+      fetch("/api/application").then(r => r.json()),
+      fetch("/api/tasks").then(r => r.json()),
     ])
       .then(([app, taskList]) => {
         if (app.error) { setError(app.error); return }
         setAppData(app)
         setTasks(Array.isArray(taskList) ? taskList : [])
       })
-      .catch((e) => setError(e.message))
+      .catch(e => setError(e.message))
       .finally(() => setLoading(false))
   }, [])
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-      </div>
-    )
+    return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-blue-500" /></div>
   }
 
   if (error) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-red-500">{error}</p>
-      </div>
-    )
+    return <div className="flex items-center justify-center h-64"><p className="text-red-500">{error}</p></div>
   }
 
   if (!appData) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-gray-500">No application data found.</p>
-      </div>
-    )
+    return <div className="flex items-center justify-center h-64"><p className="text-gray-500">No application data found.</p></div>
   }
 
   const overallProgress = appData.stageProgress.length > 0
     ? Math.round(appData.stageProgress.reduce((s, sp) => s + sp.progress, 0) / appData.stageProgress.length)
     : 0
 
-  const completedStages = appData.stageProgress.filter((s) => s.status === "COMPLETED").length
+  const completedStages = appData.stageProgress.filter(s => s.status === "COMPLETED").length
   const totalStages = appData.stageProgress.length
 
-  const currentStage = appData.stageProgress.find((s) => s.status === "IN_PROGRESS")
-  const currentStageName = currentStage?.stage.name || "Not started"
+  const currentStage = appData.stageProgress.find(s => s.status === "IN_PROGRESS")
+  const nextStage = currentStage
+    ? appData.stageProgress.find(s => s.stage.order > currentStage.stage.order && s.status !== "COMPLETED")
+    : appData.stageProgress.find(s => s.status !== "COMPLETED")
+  const currentStageName = currentStage?.stage.name || nextStage?.stage.name || "Complete"
 
   const taskTotal = tasks.length
-  const taskCompleted = tasks.filter((t) => t.status === "COMPLETED").length
-  const taskInProgress = tasks.filter((t) => t.status === "IN_PROGRESS").length
-  const taskBlocked = tasks.filter((t) => t.status === "BLOCKED").length
+  const taskCompleted = tasks.filter(t => t.status === "COMPLETED").length
+  const taskInProgress = tasks.filter(t => t.status === "IN_PROGRESS").length
+  const taskBlocked = tasks.filter(t => t.status === "BLOCKED").length
   const taskPending = taskTotal - taskCompleted - taskInProgress - taskBlocked
   const taskProgress = taskTotal > 0 ? Math.round((taskCompleted / taskTotal) * 100) : 0
 
   const now = new Date()
-  const dayOfWeek = now.getDay()
-  const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
-  const startOfWeek = new Date(now)
-  startOfWeek.setDate(now.getDate() + mondayOffset)
-  startOfWeek.setHours(0, 0, 0, 0)
-  const endOfWeek = new Date(startOfWeek)
-  endOfWeek.setDate(startOfWeek.getDate() + 6)
-  endOfWeek.setHours(23, 59, 59, 999)
-
-  const tasksDueThisWeek = tasks.filter(
-    (t) =>
-      t.status !== "COMPLETED" &&
-      t.dueDate &&
-      new Date(t.dueDate) >= startOfWeek &&
-      new Date(t.dueDate) <= endOfWeek,
-  )
-
   const upcomingDeadlines = tasks
-    .filter((t) => t.status !== "COMPLETED" && t.dueDate)
+    .filter(t => t.status !== "COMPLETED" && t.dueDate)
     .sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime())
     .slice(0, 5)
 
-  const costsByCurrency = tasks.reduce(
-    (acc, t) => {
-      const curr = t.currency || "CAD"
-      if (!acc[curr]) acc[curr] = { estimated: 0, paid: 0 }
-      if (t.estimatedCost) acc[curr].estimated += t.estimatedCost
-      if (t.actualCost && t.paid) acc[curr].paid += t.actualCost
-      return acc
-    },
-    {} as Record<string, { estimated: number; paid: number }>,
-  )
+  const recentlyCompleted = tasks
+    .filter(t => t.status === "COMPLETED" && t.completedDate)
+    .sort((a, b) => new Date(b.completedDate!).getTime() - new Date(a.completedDate!).getTime())
+    .slice(0, 5)
+
+  const docTotal = tasks.filter(t => t.taskType === "DOCUMENT").length
+  const docUploaded = tasks.filter(t => t.taskType === "DOCUMENT" && t.status === "COMPLETED").length
+
+  const costsByCurrency = tasks.reduce((acc, t) => {
+    const curr = t.currency || "CAD"
+    if (!acc[curr]) acc[curr] = { estimated: 0, paid: 0 }
+    if (t.estimatedCost) acc[curr].estimated += t.estimatedCost
+    if (t.actualCost && t.paid) acc[curr].paid += t.actualCost
+    return acc
+  }, {} as Record<string, { estimated: number; paid: number }>)
 
   const totalEstimated = Object.values(costsByCurrency).reduce((s, c) => s + c.estimated, 0)
   const totalPaid = Object.values(costsByCurrency).reduce((s, c) => s + c.paid, 0)
-
   const familyCount = appData.applicants.length
 
-  const stageStatusIcon = (status: string, isCurrent: boolean) => {
+  const stageStatusDot = (status: string, isCurrent: boolean) => {
     if (status === "COMPLETED") return <CheckCircle2 className="h-5 w-5 text-green-500" />
     if (isCurrent) return <CircleDot className="h-5 w-5 text-blue-500" />
     return <div className="h-5 w-5 rounded-full border-2 border-gray-300 dark:border-gray-600" />
   }
 
   const priorityBadgeVariant: Record<string, "danger" | "warning" | "info" | "default"> = {
-    CRITICAL: "danger",
-    HIGH: "warning",
-    MEDIUM: "info",
-    LOW: "default",
+    CRITICAL: "danger", HIGH: "warning", MEDIUM: "info", LOW: "default",
   }
 
   const formatDate = (d: string | null) => {
@@ -175,25 +152,23 @@ export function DashboardClient({ userName }: DashboardClientProps) {
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            Welcome back, {userName}
-          </h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Welcome back, {userName}</h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            {appData.pathway.name} · Started{" "}
-            {new Date(appData.createdAt).toLocaleDateString("en-US", {
-              month: "long",
-              year: "numeric",
+            {appData.pathway.name} · {appData.label} · Started{" "}
+            {new Date(appData.status === "PLANNING" ? Date.now() : Date.now()).toLocaleDateString("en-US", {
+              month: "long", year: "numeric",
             })}
           </p>
         </div>
       </div>
 
+      {/* Top Stats */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Overall Progress</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{overallProgress}%</p>
+              <p className="text-sm text-gray-500">Overall Progress</p>
+              <p className="text-2xl font-bold text-gray-900">{overallProgress}%</p>
             </div>
             <ProgressRing progress={overallProgress} size={64} strokeWidth={6} />
           </div>
@@ -206,11 +181,30 @@ export function DashboardClient({ userName }: DashboardClientProps) {
 
         <Card>
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Tasks</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{taskCompleted}/{taskTotal}</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm text-gray-500">Current Stage</p>
+              <p className="truncate text-lg font-semibold text-gray-900">{currentStageName}</p>
             </div>
-            <div className="rounded-full bg-blue-100 p-3 text-blue-600 dark:bg-blue-900 dark:text-blue-300">
+            <div className="ml-3 rounded-full bg-purple-100 p-3 text-purple-600">
+              <Map className="h-6 w-6" />
+            </div>
+          </div>
+          {currentStage && <ProgressBar progress={currentStage.progress} size="sm" className="mt-3" />}
+          {nextStage && nextStage !== currentStage && (
+            <p className="mt-2 text-xs text-gray-400 flex items-center gap-1">
+              Next: <span className="font-medium text-gray-600">{nextStage.stage.name}</span>
+              <ArrowRight className="h-3 w-3" />
+            </p>
+          )}
+        </Card>
+
+        <Card>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-500">Tasks</p>
+              <p className="text-2xl font-bold text-gray-900">{taskCompleted}/{taskTotal}</p>
+            </div>
+            <div className="rounded-full bg-blue-100 p-3 text-blue-600">
               <CheckCircle2 className="h-6 w-6" />
             </div>
           </div>
@@ -223,29 +217,16 @@ export function DashboardClient({ userName }: DashboardClientProps) {
 
         <Card>
           <div className="flex items-center justify-between">
-            <div className="min-w-0 flex-1">
-              <p className="text-sm text-gray-500 dark:text-gray-400">Current Stage</p>
-              <p className="truncate text-lg font-semibold text-gray-900 dark:text-gray-100">{currentStageName}</p>
-            </div>
-            <div className="ml-3 rounded-full bg-purple-100 p-3 text-purple-600 dark:bg-purple-900 dark:text-purple-300">
-              <CalendarDays className="h-6 w-6" />
-            </div>
-          </div>
-          {currentStage && <ProgressBar progress={currentStage.progress} size="sm" className="mt-3" />}
-        </Card>
-
-        <Card>
-          <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Family</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{familyCount}</p>
+              <p className="text-sm text-gray-500">Family</p>
+              <p className="text-2xl font-bold text-gray-900">{familyCount}</p>
             </div>
-            <div className="rounded-full bg-green-100 p-3 text-green-600 dark:bg-green-900 dark:text-green-300">
+            <div className="rounded-full bg-green-100 p-3 text-green-600">
               <Heart className="h-6 w-6" />
             </div>
           </div>
           <div className="mt-2 flex items-center gap-1.5">
-            {appData.applicants.map((a) => {
+            {appData.applicants.map(a => {
               const Icon = a.type === "SPOUSE" ? Heart : a.type === "CHILD" ? Baby : User
               return (
                 <div key={a.id} className="flex items-center gap-1 text-xs text-gray-500">
@@ -259,6 +240,7 @@ export function DashboardClient({ userName }: DashboardClientProps) {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-5">
+        {/* Left: Stage Progress + Recent Activity */}
         <div className="space-y-6 lg:col-span-3">
           <Card>
             <CardTitle>Stage Progress</CardTitle>
@@ -273,60 +255,25 @@ export function DashboardClient({ userName }: DashboardClientProps) {
                 return (
                   <div key={sp.id} className="relative flex gap-4 pb-8 last:pb-0">
                     {!isLast && (
-                      <div
-                        className={`absolute left-4 top-8 h-full w-0.5 -translate-x-1/2 ${
-                          isComplete
-                            ? "bg-green-500"
-                            : isCurrent
-                              ? "bg-blue-300"
-                              : "bg-gray-200 dark:bg-gray-700"
-                        }`}
-                      />
+                      <div className={`absolute left-4 top-8 h-full w-0.5 -translate-x-1/2 ${
+                        isComplete ? "bg-green-500" : isCurrent ? "bg-blue-300" : "bg-gray-200 dark:bg-gray-700"
+                      }`} />
                     )}
                     <div className="relative z-10 flex h-8 w-8 flex-shrink-0 items-center justify-center">
-                      {stageStatusIcon(sp.status, isCurrent)}
+                      {stageStatusDot(sp.status, isCurrent)}
                     </div>
                     <div className="min-w-0 flex-1 pt-0.5">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span
-                          className={`text-sm font-semibold ${
-                            isComplete
-                              ? "text-green-700 dark:text-green-400"
-                              : isCurrent
-                                ? "text-blue-700 dark:text-blue-400"
-                                : "text-gray-700 dark:text-gray-300"
-                          }`}
-                        >
-                          {sp.stage.name}
-                        </span>
-                        <Badge
-                          variant={
-                            sp.status === "COMPLETED"
-                              ? "success"
-                              : isCurrent
-                                ? "info"
-                                : "outline"
-                          }
-                        >
-                          {sp.status === "COMPLETED"
-                            ? "Completed"
-                            : isCurrent
-                              ? "In Progress"
-                              : sp.status === "UNLOCKED"
-                                ? "Ready"
-                                : sp.status === "LOCKED"
-                                  ? "Locked"
-                                  : sp.status}
+                        <span className={`text-sm font-semibold ${
+                          isComplete ? "text-green-700 dark:text-green-400" : isCurrent ? "text-blue-700 dark:text-blue-400" : "text-gray-700 dark:text-gray-300"
+                        }`}>{sp.stage.name}</span>
+                        <Badge variant={isComplete ? "success" : isCurrent ? "info" : "outline"}>
+                          {isComplete ? "Completed" : isCurrent ? "In Progress" : sp.status}
                         </Badge>
                       </div>
-                      {sp.startedAt && (
+                      {(sp.startDate || sp.endDate) && (
                         <p className="mt-0.5 text-xs text-gray-400">
-                          Started{" "}
-                          {new Date(sp.startedAt).toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          })}
+                          {sp.startDate ? new Date(sp.startDate).toLocaleDateString() : "—"} — {sp.endDate ? new Date(sp.endDate).toLocaleDateString() : "—"}
                         </p>
                       )}
                       {!isComplete && <ProgressBar progress={sp.progress} size="sm" className="mt-2" />}
@@ -336,73 +283,89 @@ export function DashboardClient({ userName }: DashboardClientProps) {
               })}
             </div>
           </Card>
+
+          <Card>
+            <CardTitle>Recently Completed</CardTitle>
+            {recentlyCompleted.length === 0 ? (
+              <p className="py-4 text-center text-sm text-gray-500">No completed tasks yet.</p>
+            ) : (
+              <div className="mt-4 space-y-2">
+                {recentlyCompleted.map(t => (
+                  <div key={t.id} className="flex items-center gap-3 text-sm">
+                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                    <span className="flex-1 text-gray-900">{t.title}</span>
+                    <span className="text-xs text-gray-400">{formatDate(t.completedDate)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
         </div>
 
+        {/* Right: Deadlines + Stats + Costs */}
         <div className="space-y-6 lg:col-span-2">
           <Card>
             <div className="flex items-center gap-3">
-              <div className="rounded-full bg-amber-100 p-2.5 text-amber-600 dark:bg-amber-900 dark:text-amber-300">
+              <div className="rounded-full bg-amber-100 p-2.5 text-amber-600">
                 <Clock className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Due This Week</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{tasksDueThisWeek.length}</p>
+                <p className="text-sm text-gray-500">Upcoming Deadlines</p>
+                <p className="text-2xl font-bold text-gray-900">{upcomingDeadlines.length}</p>
               </div>
             </div>
           </Card>
 
           <Card>
-            <div className="mb-4 flex items-center justify-between">
-              <CardTitle>Upcoming Deadlines</CardTitle>
-            </div>
+            <CardTitle>Next Up</CardTitle>
             {upcomingDeadlines.length === 0 ? (
-              <p className="py-2 text-center text-sm text-gray-500">No upcoming deadlines.</p>
+              <p className="py-4 text-center text-sm text-gray-500">No upcoming deadlines.</p>
             ) : (
-              <div className="space-y-3">
-                {upcomingDeadlines.map((t) => {
-                  const assigneeName = t.assignees?.[0]?.applicant?.firstName
-                  return (
-                    <div key={t.id} className="flex items-start gap-3">
-                      <CalendarDays className="mt-0.5 h-4 w-4 flex-shrink-0 text-gray-400" />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">{t.title}</p>
-                        <p className="text-xs text-gray-500">
-                          {formatDate(t.dueDate)}
-                          {assigneeName && <span> · {assigneeName}</span>}
-                        </p>
-                      </div>
-                      <Badge variant={priorityBadgeVariant[t.priority] || "default"} className="flex-shrink-0">
-                        {t.priority}
-                      </Badge>
+              <div className="mt-4 space-y-3">
+                {upcomingDeadlines.map(t => (
+                  <div key={t.id} className="flex items-start gap-3">
+                    <CalendarDays className="mt-0.5 h-4 w-4 flex-shrink-0 text-gray-400" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-gray-900">{t.title}</p>
+                      <p className="text-xs text-gray-500">{formatDate(t.dueDate)}</p>
                     </div>
-                  )
-                })}
+                    <Badge variant={priorityBadgeVariant[t.priority] || "default"} className="flex-shrink-0">
+                      {t.priority}
+                    </Badge>
+                  </div>
+                ))}
               </div>
             )}
           </Card>
 
           <Card>
-            <CardTitle>Task Status</CardTitle>
+            <CardTitle>Task Summary</CardTitle>
             <div className="mt-4 space-y-3">
               <div className="flex items-center gap-3">
                 <div className="h-3 w-3 rounded-full bg-green-500" />
-                <span className="flex-1 text-sm text-gray-600 dark:text-gray-400">Completed</span>
-                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{taskCompleted}</span>
+                <span className="flex-1 text-sm text-gray-600">Completed</span>
+                <span className="text-sm font-medium text-gray-900">{taskCompleted}</span>
               </div>
               <div className="flex items-center gap-3">
                 <div className="h-3 w-3 rounded-full bg-blue-500" />
-                <span className="flex-1 text-sm text-gray-600 dark:text-gray-400">In Progress</span>
-                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{taskInProgress}</span>
+                <span className="flex-1 text-sm text-gray-600">In Progress</span>
+                <span className="text-sm font-medium text-gray-900">{taskInProgress}</span>
               </div>
               <div className="flex items-center gap-3">
                 <div className="h-3 w-3 rounded-full bg-yellow-500" />
-                <span className="flex-1 text-sm text-gray-600 dark:text-gray-400">Pending</span>
-                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{taskPending}</span>
+                <span className="flex-1 text-sm text-gray-600">Pending</span>
+                <span className="text-sm font-medium text-gray-900">{taskPending}</span>
               </div>
               <div className="flex items-center gap-3">
                 <div className="h-3 w-3 rounded-full bg-red-500" />
-                <span className="flex-1 text-sm text-gray-600 dark:text-gray-400">Blocked</span>
-                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{taskBlocked}</span>
+                <span className="flex-1 text-sm text-gray-600">Blocked</span>
+                <span className="text-sm font-medium text-gray-900">{taskBlocked}</span>
+              </div>
+              <hr className="border-gray-100 dark:border-gray-800" />
+              <div className="flex items-center gap-3">
+                <FileText className="h-4 w-4 text-gray-400" />
+                <span className="flex-1 text-sm text-gray-600">Documents</span>
+                <span className="text-sm font-medium text-gray-900">{docUploaded}/{docTotal}</span>
               </div>
             </div>
           </Card>
@@ -415,46 +378,26 @@ export function DashboardClient({ userName }: DashboardClientProps) {
               )}
               {Object.entries(costsByCurrency).map(([currency, costs]) => (
                 <div key={currency}>
-                  <div className="mb-1.5 grid grid-cols-3 gap-2 text-xs text-gray-500 dark:text-gray-400">
-                    <span>{currency}</span>
-                    <span>Estimated</span>
-                    <span>Paid</span>
+                  <div className="grid grid-cols-3 gap-2 text-xs text-gray-500 mb-1">
+                    <span>{currency}</span><span>Estimated</span><span>Paid</span>
                   </div>
                   <div className="grid grid-cols-3 gap-2 text-sm font-medium">
-                    <span className="text-gray-900 dark:text-gray-100">{currency}</span>
+                    <span className="text-gray-900">{currency}</span>
                     <span>${costs.estimated.toLocaleString()}</span>
-                    <span className={costs.paid > 0 ? "text-green-600" : "text-gray-400"}>
-                      ${costs.paid.toLocaleString()}
-                    </span>
+                    <span className={costs.paid > 0 ? "text-green-600" : "text-gray-400"}>${costs.paid.toLocaleString()}</span>
                   </div>
                   <div className="mt-1 flex items-center gap-2 text-xs">
                     <TrendingDown className="h-3 w-3 text-gray-400" />
-                    <span className="text-gray-500">
-                      Remaining: ${(costs.estimated - costs.paid).toLocaleString()}
-                    </span>
+                    <span className="text-gray-500">Remaining: ${(costs.estimated - costs.paid).toLocaleString()}</span>
                   </div>
-                  {Object.entries(costsByCurrency).length > 1 && (
-                    <hr className="my-3 border-gray-100 dark:border-gray-800" />
-                  )}
                 </div>
               ))}
               {Object.entries(costsByCurrency).length > 1 && (
-                <div className="border-t border-gray-100 pt-3 dark:border-gray-800">
-                  <div className="mb-1.5 grid grid-cols-3 gap-2 text-xs text-gray-500 dark:text-gray-400">
+                <div className="border-t pt-3">
+                  <div className="grid grid-cols-3 gap-2 text-sm font-semibold text-gray-900">
                     <span>Total</span>
-                    <span>Estimated</span>
-                    <span>Paid</span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
-                    <span>All</span>
                     <span>${totalEstimated.toLocaleString()}</span>
                     <span className="text-green-600">${totalPaid.toLocaleString()}</span>
-                  </div>
-                  <div className="mt-2 flex items-center gap-2 text-sm">
-                    <DollarSign className="h-4 w-4 text-blue-500" />
-                    <span className="font-medium text-gray-900 dark:text-gray-100">
-                      Remaining: ${(totalEstimated - totalPaid).toLocaleString()}
-                    </span>
                   </div>
                 </div>
               )}
@@ -466,12 +409,10 @@ export function DashboardClient({ userName }: DashboardClientProps) {
               <div className="flex items-center gap-3">
                 <CalendarDays className="h-5 w-5 text-blue-500" />
                 <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Projected Application Date</p>
-                  <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  <p className="text-sm text-gray-500">Projected Timeline</p>
+                  <p className="text-lg font-semibold text-gray-900">
                     {new Date(appData.estimatedCompletionDate).toLocaleDateString("en-US", {
-                      month: "long",
-                      day: "numeric",
-                      year: "numeric",
+                      month: "long", day: "numeric", year: "numeric",
                     })}
                   </p>
                 </div>

@@ -5,9 +5,9 @@ import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import {
   LayoutDashboard,
+  Map,
   CheckSquare,
   FileText,
-  Calculator,
   Languages,
   CalendarDays,
   Settings,
@@ -19,9 +19,9 @@ import { useState } from "react"
 
 const navItems = [
   { href: "/app/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/app/roadmap", label: "Roadmap", icon: Map },
   { href: "/app/tasks", label: "Tasks", icon: CheckSquare },
   { href: "/app/documents", label: "Documents", icon: FileText },
-  { href: "/app/crs", label: "Profile Score", icon: Calculator },
   { href: "/app/language", label: "Language Tests", icon: Languages },
   { href: "/app/timeline", label: "Timeline", icon: CalendarDays },
   { href: "/app/applicants", label: "Applicants", icon: Users },

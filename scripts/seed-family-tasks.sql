@@ -169,6 +169,113 @@ WHERE t.title IN (
   'Submit Express Entry profile and enter pool'
 );
 
+-- Task Dependencies
+-- French study → Book TEF → Write TEF → Receive results
+INSERT INTO "TaskDependency" (id, "taskId", "dependsOnId", "createdAt")
+SELECT gen_random_uuid()::TEXT, book.id, study.id, NOW()
+FROM "TaskInstance" book, "TaskInstance" study
+WHERE book.title = 'Book TEF Canada exam - Taiwo Oluwatoyin'
+  AND study.title = 'Begin French study - Taiwo Oluwatoyin';
+
+INSERT INTO "TaskDependency" (id, "taskId", "dependsOnId", "createdAt")
+SELECT gen_random_uuid()::TEXT, write.id, book.id, NOW()
+FROM "TaskInstance" write, "TaskInstance" book
+WHERE write.title = 'Write TEF Canada exam - Taiwo Oluwatoyin'
+  AND book.title = 'Book TEF Canada exam - Taiwo Oluwatoyin';
+
+INSERT INTO "TaskDependency" (id, "taskId", "dependsOnId", "createdAt")
+SELECT gen_random_uuid()::TEXT, receive.id, write.id, NOW()
+FROM "TaskInstance" receive, "TaskInstance" write
+WHERE receive.title = 'Receive TEF Canada results'
+  AND write.title = 'Write TEF Canada exam - Taiwo Oluwatoyin';
+
+-- IELTS preparation → Book IELTS → Write IELTS → Receive results
+INSERT INTO "TaskDependency" (id, "taskId", "dependsOnId", "createdAt")
+SELECT gen_random_uuid()::TEXT, book.id, prep.id, NOW()
+FROM "TaskInstance" book, "TaskInstance" prep
+WHERE book.title = 'Book IELTS General exam - Taiwo Ajibola'
+  AND prep.title = 'Begin IELTS preparation - Taiwo Ajibola';
+
+INSERT INTO "TaskDependency" (id, "taskId", "dependsOnId", "createdAt")
+SELECT gen_random_uuid()::TEXT, write.id, book.id, NOW()
+FROM "TaskInstance" write, "TaskInstance" book
+WHERE write.title = 'Write IELTS General exam - Taiwo Ajibola'
+  AND book.title = 'Book IELTS General exam - Taiwo Ajibola';
+
+INSERT INTO "TaskDependency" (id, "taskId", "dependsOnId", "createdAt")
+SELECT gen_random_uuid()::TEXT, write.id, book.id, NOW()
+FROM "TaskInstance" write, "TaskInstance" book
+WHERE write.title = 'Write IELTS General exam - Taiwo Oluwatoyin'
+  AND book.title = 'Book IELTS General exam - Taiwo Oluwatoyin';
+
+-- Transcripts → WES Application → WES Evaluation
+INSERT INTO "TaskDependency" (id, "taskId", "dependsOnId", "createdAt")
+SELECT gen_random_uuid()::TEXT, wes.id, trans.id, NOW()
+FROM "TaskInstance" wes, "TaskInstance" trans
+WHERE wes.title = 'Submit WES application - Taiwo Ajibola'
+  AND trans.title = 'Request official transcripts - Taiwo Ajibola';
+
+INSERT INTO "TaskDependency" (id, "taskId", "dependsOnId", "createdAt")
+SELECT gen_random_uuid()::TEXT, wes.id, trans.id, NOW()
+FROM "TaskInstance" wes, "TaskInstance" trans
+WHERE wes.title = 'Submit WES application - Taiwo Oluwatoyin'
+  AND trans.title = 'Request official transcripts - Taiwo Oluwatoyin';
+
+INSERT INTO "TaskDependency" (id, "taskId", "dependsOnId", "createdAt")
+SELECT gen_random_uuid()::TEXT, receive.id, wes.id, NOW()
+FROM "TaskInstance" receive, "TaskInstance" wes
+WHERE receive.title = 'Receive WES ECA evaluation - Taiwo Ajibola'
+  AND wes.title = 'Submit WES application - Taiwo Ajibola';
+
+INSERT INTO "TaskDependency" (id, "taskId", "dependsOnId", "createdAt")
+SELECT gen_random_uuid()::TEXT, receive.id, wes.id, NOW()
+FROM "TaskInstance" receive, "TaskInstance" wes
+WHERE receive.title = 'Receive WES ECA evaluation - Taiwo Oluwatoyin'
+  AND wes.title = 'Submit WES application - Taiwo Oluwatoyin';
+
+-- EE Profile tasks depend on receiving test results and evaluations
+INSERT INTO "TaskDependency" (id, "taskId", "dependsOnId", "createdAt")
+SELECT gen_random_uuid()::TEXT, upload.id, tef.id, NOW()
+FROM "TaskInstance" upload, "TaskInstance" tef
+WHERE upload.title = 'Upload language test scores to profile'
+  AND tef.title = 'Receive TEF Canada results';
+
+INSERT INTO "TaskDependency" (id, "taskId", "dependsOnId", "createdAt")
+SELECT gen_random_uuid()::TEXT, upload.id, ielts.id, NOW()
+FROM "TaskInstance" upload, "TaskInstance" ielts
+WHERE upload.title = 'Upload language test scores to profile'
+  AND ielts.title = 'Receive IELTS results';
+
+INSERT INTO "TaskDependency" (id, "taskId", "dependsOnId", "createdAt")
+SELECT gen_random_uuid()::TEXT, upload.id, eca.id, NOW()
+FROM "TaskInstance" upload, "TaskInstance" eca
+WHERE upload.title = 'Upload ECA reports to profile'
+  AND eca.title = 'Receive WES ECA evaluation - Taiwo Ajibola';
+
+INSERT INTO "TaskDependency" (id, "taskId", "dependsOnId", "createdAt")
+SELECT gen_random_uuid()::TEXT, upload.id, eca.id, NOW()
+FROM "TaskInstance" upload, "TaskInstance" eca
+WHERE upload.title = 'Upload ECA reports to profile'
+  AND eca.title = 'Receive WES ECA evaluation - Taiwo Oluwatoyin';
+
+INSERT INTO "TaskDependency" (id, "taskId", "dependsOnId", "createdAt")
+SELECT gen_random_uuid()::TEXT, profile.id, upload.id, NOW()
+FROM "TaskInstance" profile, "TaskInstance" upload
+WHERE profile.title = 'Create Express Entry profile'
+  AND upload.title = 'Upload language test scores to profile';
+
+INSERT INTO "TaskDependency" (id, "taskId", "dependsOnId", "createdAt")
+SELECT gen_random_uuid()::TEXT, profile.id, upload.id, NOW()
+FROM "TaskInstance" profile, "TaskInstance" upload
+WHERE profile.title = 'Create Express Entry profile'
+  AND upload.title = 'Upload ECA reports to profile';
+
+INSERT INTO "TaskDependency" (id, "taskId", "dependsOnId", "createdAt")
+SELECT gen_random_uuid()::TEXT, submit.id, profile.id, NOW()
+FROM "TaskInstance" submit, "TaskInstance" profile
+WHERE submit.title = 'Submit Express Entry profile and enter pool'
+  AND profile.title = 'Create Express Entry profile';
+
 -- Print summary
-RAISE NOTICE 'Seed complete. Created family members and timeline tasks.';
+RAISE NOTICE 'Seed complete. Created family members, timeline tasks, and dependencies.';
 END $$;

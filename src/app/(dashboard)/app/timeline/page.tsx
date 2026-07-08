@@ -3,217 +3,191 @@
 import { useEffect, useState } from "react"
 import { Card, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { CalendarDays, CheckCircle2, Loader2, ArrowRight } from "lucide-react"
+import { ProgressBar } from "@/components/ui/progress-bar"
+import { CalendarDays, CheckCircle2, Loader2, ArrowRight, Clock } from "lucide-react"
 
-type Applicant = { id: string; firstName: string; lastName: string; type: string }
-type TaskAssignee = { id: string; applicant: Applicant }
-
-type TaskData = {
+type StageData = {
   id: string
-  title: string
   status: string
-  priority: string
-  dueDate: string | null
-  taskType: string
-  category: string | null
-  assignees: TaskAssignee[]
-}
-
-type MonthGroup = {
-  monthKey: string
-  label: string
-  tasks: TaskData[]
+  progress: number
+  startedAt: string | null
+  completedAt: string | null
+  startDate: string | null
+  endDate: string | null
+  duration: number | null
+  stage: { id: string; code: string; name: string; order: number; description: string | null }
+  groups: {
+    id: string
+    name: string
+    tasks: {
+      id: string
+      title: string
+      status: string
+      priority: string
+      dueDate: string | null
+      completedDate: string | null
+      plannedDate: string | null
+    }[]
+  }[]
 }
 
 export default function TimelinePage() {
-  const [tasks, setTasks] = useState<TaskData[]>([])
+  const [stages, setStages] = useState<StageData[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch("/api/tasks")
-      .then((r) => r.json())
-      .then((data) => {
+    fetch("/api/stages")
+      .then(r => r.json())
+      .then(data => {
         if (data.error) { setError(data.error); return }
-        setTasks(Array.isArray(data) ? data : [])
+        setStages(Array.isArray(data) ? data : [])
       })
-      .catch((e) => setError(e.message))
+      .catch(e => setError(e.message))
       .finally(() => setLoading(false))
   }, [])
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-      </div>
-    )
+    return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-blue-500" /></div>
   }
 
   if (error) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-red-500">{error}</p>
-      </div>
-    )
+    return <div className="flex items-center justify-center h-64"><p className="text-red-500">{error}</p></div>
   }
 
-  const totalTasks = tasks.length
-  const completedTasks = tasks.filter((t) => t.status === "COMPLETED").length
-  const inProgressTasks = tasks.filter((t) => t.status === "IN_PROGRESS").length
-  const upcomingTasks = tasks.filter(
-    (t) => t.status !== "COMPLETED" && t.dueDate && new Date(t.dueDate) >= new Date(),
-  ).length
+  const allTasks = stages.flatMap(s => s.groups.flatMap(g => g.tasks))
+  const totalTasks = allTasks.length
+  const completedTasks = allTasks.filter(t => t.status === "COMPLETED").length
+  const inProgressTasks = allTasks.filter(t => t.status === "IN_PROGRESS").length
 
-  const monthsMap = new Map<string, { label: string; tasks: TaskData[] }>()
-  tasks
-    .filter((t) => t.dueDate)
-    .forEach((t) => {
-      const d = new Date(t.dueDate!)
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
-      const label = d.toLocaleDateString("en-US", { month: "long", year: "numeric" })
-      if (!monthsMap.has(key)) monthsMap.set(key, { label, tasks: [] })
-      monthsMap.get(key)!.tasks.push(t)
-    })
-
-  const sortedMonths: MonthGroup[] = Array.from(monthsMap.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([key, group]) => ({ ...group, monthKey: key }))
-
-  sortedMonths.forEach((m) => {
-    m.tasks.sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime())
-  })
-
-  const priorityBadgeVariant: Record<string, "danger" | "warning" | "info" | "default"> = {
-    CRITICAL: "danger",
-    HIGH: "warning",
-    MEDIUM: "info",
-    LOW: "default",
+  const statusVariant: Record<string, "success" | "info" | "warning" | "danger" | "outline"> = {
+    COMPLETED: "success", IN_PROGRESS: "info", NOT_STARTED: "outline", WAITING: "warning", BLOCKED: "danger",
   }
 
-  const statusBadgeVariant: Record<string, "success" | "info" | "warning" | "danger" | "default"> = {
-    COMPLETED: "success",
-    IN_PROGRESS: "info",
-    NOT_STARTED: "default",
-    WAITING: "warning",
-    BLOCKED: "danger",
-    NEEDS_REVIEW: "warning",
+  const priorityBadge: Record<string, "danger" | "warning" | "info" | "outline"> = {
+    CRITICAL: "danger", HIGH: "warning", MEDIUM: "info", LOW: "outline",
   }
 
-  const statusLabel: Record<string, string> = {
-    NOT_STARTED: "Not Started",
-    IN_PROGRESS: "In Progress",
-    WAITING: "Waiting",
-    BLOCKED: "Blocked",
-    COMPLETED: "Completed",
-    NEEDS_REVIEW: "Needs Review",
-    EXPIRED: "Expired",
+  const stageStatusDot = (status: string, isCurrent: boolean) => {
+    if (status === "COMPLETED") return <CheckCircle2 className="h-5 w-5 text-green-500" />
+    if (isCurrent) return <div className="h-5 w-5 rounded-full bg-blue-500" />
+    if (status === "UNLOCKED") return <div className="h-5 w-5 rounded-full border-2 border-yellow-400" />
+    return <div className="h-5 w-5 rounded-full border-2 border-gray-300 dark:border-gray-600" />
   }
+
+  const currentStage = stages.find(s => s.status === "IN_PROGRESS")
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Timeline</h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Tasks auto-organized by due date
+        <p className="mt-1 text-sm text-gray-500">
+          Stage timelines with task milestones
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Total Tasks</p>
-          <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-gray-100">{totalTasks}</p>
-        </Card>
-        <Card>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Completed</p>
-          <p className="mt-1 text-2xl font-bold text-green-600">{completedTasks}</p>
-        </Card>
-        <Card>
-          <p className="text-sm text-gray-500 dark:text-gray-400">In Progress</p>
-          <p className="mt-1 text-2xl font-bold text-blue-600">{inProgressTasks}</p>
-        </Card>
-        <Card>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Upcoming</p>
-          <p className="mt-1 text-2xl font-bold text-amber-600">{upcomingTasks}</p>
-        </Card>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Card><p className="text-sm text-gray-500">Stages</p><p className="text-2xl font-bold text-gray-900">{stages.length}</p></Card>
+        <Card><p className="text-sm text-gray-500">Completed Tasks</p><p className="text-2xl font-bold text-green-600">{completedTasks}/{totalTasks}</p></Card>
+        <Card><p className="text-sm text-gray-500">In Progress</p><p className="text-2xl font-bold text-blue-600">{inProgressTasks}</p></Card>
       </div>
 
-      {sortedMonths.length === 0 && (
-        <Card>
-          <p className="py-4 text-center text-sm text-gray-500">
-            No tasks with due dates found. Add tasks to build your timeline.
-          </p>
-        </Card>
+      {stages.length === 0 && (
+        <Card><p className="py-4 text-center text-sm text-gray-500">No timeline data available.</p></Card>
       )}
 
-      {sortedMonths.map((month) => {
-        const monthCompleted = month.tasks.filter((t) => t.status === "COMPLETED").length
-        return (
-          <Card key={month.monthKey}>
-            <div className="mb-5 flex items-center justify-between">
-              <CardTitle>{month.label}</CardTitle>
-              <Badge variant="outline">
-                {monthCompleted}/{month.tasks.length} done
-              </Badge>
-            </div>
-            <div className="space-y-0">
-              {month.tasks.map((t, idx) => {
-                const isLast = idx === month.tasks.length - 1
-                const assigneeNames =
-                  t.assignees
-                    ?.map((a) => `${a.applicant.firstName} ${a.applicant.lastName}`)
-                    .join(", ") || ""
-                return (
-                  <div
-                    key={t.id}
-                    className={`flex gap-4 ${isLast ? "pb-0" : "mb-4 border-b border-gray-100 pb-4 dark:border-gray-800"}`}
-                  >
-                    <div className="w-14 flex-shrink-0 pt-1 text-right">
-                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                        {new Date(t.dueDate!).toLocaleDateString("en-US", { day: "numeric", month: "short" })}
-                      </span>
-                    </div>
-                    <div className="relative flex flex-col items-center pt-1">
-                      <div
-                        className={`h-3 w-3 rounded-full ${
-                          t.status === "COMPLETED"
-                            ? "bg-green-500"
-                            : t.status === "IN_PROGRESS"
-                              ? "bg-blue-500"
-                              : t.status === "BLOCKED"
-                                ? "bg-red-500"
-                                : "bg-gray-300 dark:bg-gray-600"
-                        }`}
-                      />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{t.title}</span>
-                        <Badge variant={priorityBadgeVariant[t.priority] || "default"} className="flex-shrink-0">
-                          {t.priority}
-                        </Badge>
-                      </div>
-                      <div className="mt-1 flex items-center gap-2 text-xs text-gray-500 flex-wrap">
-                        <Badge variant={statusBadgeVariant[t.status] || "default"} className="flex-shrink-0">
-                          {statusLabel[t.status] || t.status}
-                        </Badge>
-                        {assigneeNames && (
-                          <>
-                            <ArrowRight className="h-3 w-3 text-gray-300" />
-                            <span>{assigneeNames}</span>
-                          </>
+      <div className="space-y-0">
+        {stages.map((s, idx) => {
+          const isCurrent = s.id === currentStage?.id
+          const isLast = idx === stages.length - 1
+          const stageTasks = s.groups.flatMap(g => g.tasks)
+          const stageDone = stageTasks.filter(t => t.status === "COMPLETED").length
+
+          return (
+            <div key={s.id} className="relative flex gap-4 pb-8 last:pb-0">
+              {!isLast && (
+                <div className={`absolute left-4 top-8 h-full w-0.5 -translate-x-1/2 ${
+                  s.status === "COMPLETED" ? "bg-green-500" : "bg-gray-200 dark:bg-gray-700"
+                }`} />
+              )}
+              <div className="relative z-10 flex h-8 w-8 flex-shrink-0 items-center justify-center">
+                {stageStatusDot(s.status, isCurrent)}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className={`text-base font-semibold ${
+                    s.status === "COMPLETED" ? "text-green-700 dark:text-green-400" : "text-gray-900 dark:text-gray-100"
+                  }`}>{s.stage.name}</span>
+                  <Badge variant={statusVariant[s.status] || "outline"}>
+                    {s.status === "IN_PROGRESS" ? "In Progress" : s.status}
+                  </Badge>
+                </div>
+
+                {/* Timeline Dates */}
+                <div className="mt-1 flex items-center gap-3 text-xs text-gray-500">
+                  <CalendarDays className="h-3.5 w-3.5" />
+                  <span>{s.startDate ? new Date(s.startDate).toLocaleDateString() : "—"}</span>
+                  <ArrowRight className="h-3 w-3" />
+                  <span>{s.endDate ? new Date(s.endDate).toLocaleDateString() : "—"}</span>
+                  {s.duration && (
+                    <>
+                      <span className="text-gray-300">|</span>
+                      <Clock className="h-3.5 w-3.5" />
+                      <span>{s.duration} days</span>
+                    </>
+                  )}
+                </div>
+
+                {/* Stage Progress */}
+                {stageTasks.length > 0 && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className="text-xs text-gray-400">{stageDone}/{stageTasks.length} tasks</span>
+                    <ProgressBar
+                      progress={stageTasks.length > 0 ? (stageDone / stageTasks.length) * 100 : 0}
+                      size="sm" className="w-32"
+                    />
+                  </div>
+                )}
+
+                {/* Tasks as milestones */}
+                {stageTasks.length > 0 && (
+                  <div className="mt-3 space-y-1">
+                    {stageTasks.map(t => (
+                      <div key={t.id} className="flex items-center gap-2 pl-2">
+                        <div className={`h-2 w-2 rounded-full ${
+                          t.status === "COMPLETED" ? "bg-green-500" : t.status === "IN_PROGRESS" ? "bg-blue-500" : "bg-gray-300"
+                        }`} />
+                        <span className={`text-xs ${t.status === "COMPLETED" ? "line-through text-gray-400" : "text-gray-600 dark:text-gray-400"}`}>
+                          {t.title}
+                        </span>
+                        {t.priority === "CRITICAL" && t.status !== "COMPLETED" && (
+                          <Badge variant="danger" className="text-[10px]">Critical</Badge>
+                        )}
+                        {t.dueDate && (
+                          <span className="text-[10px] text-gray-400">
+                            {new Date(t.dueDate).toLocaleDateString()}
+                          </span>
                         )}
                       </div>
-                    </div>
-                    {t.status === "COMPLETED" && (
-                      <CheckCircle2 className="mt-1.5 h-4 w-4 flex-shrink-0 text-green-500" />
-                    )}
+                    ))}
                   </div>
-                )
-              })}
+                )}
+
+                {/* Groups */}
+                {s.groups.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {s.groups.map(g => (
+                      <Badge key={g.id} variant="outline" className="text-[10px]">
+                        {g.name} ({g.tasks.filter(t => t.status === "COMPLETED").length}/{g.tasks.length})
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-          </Card>
-        )
-      })}
+          )
+        })}
+      </div>
     </div>
   )
 }

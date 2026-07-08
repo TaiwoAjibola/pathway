@@ -26,7 +26,7 @@ export async function getApplication() {
       pathway: true,
       applicants: true,
       stageProgress: {
-        include: { stage: true },
+        include: { stage: true, groups: true },
         orderBy: { stage: { order: "asc" } },
       },
       taskInstances: {
@@ -34,11 +34,7 @@ export async function getApplication() {
           assignees: { include: { applicant: true } },
           documents: true,
         },
-        orderBy: { createdAt: "desc" },
-      },
-      crsSnapshots: {
-        orderBy: { createdAt: "desc" },
-        take: 1,
+        orderBy: { order: "asc" },
       },
     },
   })
@@ -82,8 +78,11 @@ export async function getTasks() {
   if (!appId) return []
   return prisma.taskInstance.findMany({
     where: { applicationId: appId },
-    include: { assignees: { include: { applicant: true } } },
-    orderBy: [{ priority: "asc" }, { createdAt: "desc" }],
+    include: {
+      assignees: { include: { applicant: true } },
+      group: true,
+    },
+    orderBy: [{ order: "asc" }, { createdAt: "desc" }],
   })
 }
 
